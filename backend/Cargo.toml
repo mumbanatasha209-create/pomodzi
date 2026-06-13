@@ -1,0 +1,51 @@
+[package]
+name = "pamodzi-backend"
+version = "0.1.0"
+edition = "2021"
+description = "Pamodzi Finance — Stellar-powered community savings & village banking API"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Database
+sqlx = { version = "0.7", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "uuid",
+    "chrono",
+    "bigdecimal",
+    "macros",
+    "migrate",
+] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Auth & crypto
+jsonwebtoken = "9"
+bcrypt = "0.15"
+
+# Stellar testnet (keypair generation + strkey encoding)
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+
+# HTTP client for Horizon / Friendbot
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Utilities
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+bigdecimal = { version = "0.4", features = ["serde"] }
+dotenvy = "0.15"
+thiserror = "1"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+opt-level = 2
