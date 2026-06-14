@@ -6,14 +6,15 @@ description = "Pamodzi Finance — Stellar-powered community savings & village b
 
 [dependencies]
 # Web framework
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.8", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
 
 # Database
-sqlx = { version = "0.7", features = [
-    "runtime-tokio-rustls",
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "tls-rustls",
     "postgres",
     "uuid",
     "chrono",
