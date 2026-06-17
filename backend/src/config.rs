@@ -35,7 +35,11 @@ impl Config {
         Ok(Self {
             database_url: env::var("DATABASE_URL")
                 .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/pamodzi".into()),
-            server_addr: env::var("SERVER_ADDR").unwrap_or_else(|_| "0.0.0.0:8080".into()),
+            server_addr: env::var("SERVER_ADDR").unwrap_or_else(|_| {
+                env::var("PORT")
+                    .map(|port| format!("0.0.0.0:{port}"))
+                    .unwrap_or_else(|_| "0.0.0.0:8080".into())
+            }),
             jwt_secret,
             jwt_expiry_hours: env::var("JWT_EXPIRY_HOURS")
                 .ok()

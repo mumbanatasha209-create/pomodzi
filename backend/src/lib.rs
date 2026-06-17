@@ -38,10 +38,26 @@ pub async fn run() -> anyhow::Result<()> {
     let auth_rate_limiter = new_auth_rate_limiter();
     let state = AppState::new(pool, config.clone(), auth_rate_limiter);
 
-    let cors = CorsLayer::new()
-        .allow_origin(config.frontend_origin.parse::<axum::http::HeaderValue>()?)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let cors = {
+        use tower_http::cors::AllowOrigin;
+
+        let origins: Vec<axum::http::HeaderValue> = config
+            .frontend_origin
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|origin| {
+                origin
+                    .parse::<axum::http::HeaderValue>()
+                    .map_err(|e| anyhow::anyhow!("invalid FRONTEND_ORIGIN {origin:?}: {e}"))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods(Any)
+            .allow_headers(Any)
+    };
 
     let security_headers = ServiceBuilder::new()
         .layer(SetResponseHeaderLayer::if_not_present(

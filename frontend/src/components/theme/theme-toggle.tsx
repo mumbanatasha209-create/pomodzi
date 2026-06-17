@@ -12,7 +12,8 @@ export function ThemeToggle({ className }: { className?: string }) {
 
   useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === "dark";
+  // Defer theme reads until after mount — next-themes resolves on the client only.
+  const isDark = mounted ? resolvedTheme === "dark" : true;
 
   const toggle = () => {
     setTheme(isDark ? "light" : "dark");
@@ -21,9 +22,16 @@ export function ThemeToggle({ className }: { className?: string }) {
   return (
     <button
       type="button"
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={
+        mounted
+          ? isDark
+            ? "Switch to light mode"
+            : "Switch to dark mode"
+          : "Toggle theme"
+      }
       aria-pressed={mounted ? isDark : undefined}
       onClick={toggle}
+      suppressHydrationWarning
       className={cn(
         "relative flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 bg-secondary/40 text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground",
         className,
@@ -42,7 +50,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </motion.span>
         ) : (
-          <Sun className="h-4 w-4 opacity-40" aria-hidden />
+          <Moon className="h-4 w-4 opacity-40" aria-hidden />
         )}
       </AnimatePresence>
     </button>
