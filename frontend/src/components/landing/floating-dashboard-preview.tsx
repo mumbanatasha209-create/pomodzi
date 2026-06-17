@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -44,56 +45,81 @@ function FlowArrow({ delay = 0 }: { delay?: number }) {
   );
 }
 
+/** Fixed offsets avoid Framer Motion x/y hydration rounding mismatches. */
+function orbitOffset(angle: number, radius: number) {
+  const rad = (angle * Math.PI) / 180;
+  const x = Math.cos(rad) * radius - 20;
+  const y = Math.sin(rad) * radius - 20;
+  return {
+    x: Number(x.toFixed(2)),
+    y: Number(y.toFixed(2)),
+  };
+}
+
+const ORBITAL_NODES = [
+  { angle: 0, label: "Node", delay: 0 },
+  { angle: 72, label: "XLM", delay: 0.5 },
+  { angle: 144, label: "TX", delay: 1 },
+  { angle: 216, label: "ZK", delay: 1.5 },
+  { angle: 288, label: "GB", delay: 2 },
+] as const;
+
 function OrbitalNode({
   angle,
   radius,
   label,
   delay,
+  animate,
 }: {
   angle: number;
   radius: number;
   label: string;
   delay: number;
+  animate: boolean;
 }) {
-  const rad = (angle * Math.PI) / 180;
-  const x = Math.cos(rad) * radius;
-  const y = Math.sin(rad) * radius;
+  const { x, y } = orbitOffset(angle, radius);
 
   return (
-    <motion.div
+    <div
       className="absolute left-1/2 top-1/2"
-      style={{ x: x - 20, y: y - 20 }}
-      animate={{ rotate: 360 }}
-      transition={{ duration: 30, repeat: Infinity, ease: "linear", delay }}
+      style={{ transform: `translate(${x}px, ${y}px)` }}
     >
       <motion.div
         className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-400/30 bg-[#050816]/80 text-[10px] font-medium text-cyan-300 backdrop-blur-sm"
-        animate={{ scale: [1, 1.08, 1] }}
+        animate={animate ? { scale: [1, 1.08, 1] } : { scale: 1 }}
         transition={{ duration: 3, repeat: Infinity, delay }}
       >
         {label.slice(0, 2)}
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
 
 export function FloatingDashboardPreview({ className }: { className?: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <div className={cn("relative", className)}>
       {/* Orbital network behind card */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <motion.div
           className="relative h-[340px] w-[340px] sm:h-[400px] sm:w-[400px]"
-          animate={{ rotate: 360 }}
+          animate={mounted ? { rotate: 360 } : undefined}
           transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
         >
           <div className="absolute inset-0 rounded-full border border-dashed border-cyan-500/15" />
           <div className="absolute inset-6 rounded-full border border-cyan-400/10" />
-          <OrbitalNode angle={0} radius={150} label="Node" delay={0} />
-          <OrbitalNode angle={72} radius={150} label="XLM" delay={0.5} />
-          <OrbitalNode angle={144} radius={150} label="TX" delay={1} />
-          <OrbitalNode angle={216} radius={150} label="ZK" delay={1.5} />
-          <OrbitalNode angle={288} radius={150} label="GB" delay={2} />
+          {ORBITAL_NODES.map((node) => (
+            <OrbitalNode
+              key={node.label}
+              angle={node.angle}
+              radius={150}
+              label={node.label}
+              delay={node.delay}
+              animate={mounted}
+            />
+          ))}
         </motion.div>
       </div>
 
