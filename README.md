@@ -64,7 +64,11 @@ cd backend
 
 # Configure environment
 cp .env.example .env
-# Edit .env: set DATABASE_URL, JWT_SECRET, PLATFORM_ADMIN_EMAIL, etc.
+# Edit .env: set DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY, etc.
+
+# Generate secure secrets (required — backend refuses to start without them):
+#   openssl rand -hex 32   # use for JWT_SECRET
+#   openssl rand -hex 32   # use for ENCRYPTION_KEY
 
 # Build & run (migrations run on boot)
 cargo run
@@ -78,12 +82,48 @@ Key environment variables (see `backend/.env.example`):
 | ----------------------- | -------------------------------------------- |
 | `DATABASE_URL`          | PostgreSQL connection string                 |
 | `SERVER_ADDR`           | Bind address (default `0.0.0.0:8080`)        |
-| `JWT_SECRET`            | Secret used to sign JWTs                      |
+| `JWT_SECRET`            | **Required.** Min 32 chars. Sign JWTs        |
+| `ENCRYPTION_KEY`        | **Required.** 32-byte key for Stellar secrets |
 | `JWT_EXPIRY_HOURS`      | Token lifetime in hours                      |
-| `FRONTEND_ORIGIN`       | Allowed CORS origin (default `:3000`)         |
-| `STELLAR_HORIZON_URL`   | Stellar Horizon (testnet)                    |
+| `FRONTEND_ORIGIN`       | Allowed CORS origin                          |
+| `STELLAR_HORIZON_URL`   | Stellar Horizon (testnet only)               |
 | `STELLAR_FRIENDBOT_URL` | Friendbot funding endpoint (testnet)         |
-| `PLATFORM_ADMIN_EMAIL`  | Bootstrap platform-admin account email       |
+
+### Create the first platform admin (secure)
+
+Public registration **never** grants `platform_admin`. After the API is running, use **one** of:
+
+**Option A — CLI (recommended)**
+
+```bash
+cd backend
+cargo run --bin provision-admin -- create \
+  --email you@example.com \
+  --password 'choose-a-strong-password' \
+  --full-name 'Platform Admin'
+```
+
+Promote an existing user:
+
+```bash
+cargo run --bin provision-admin -- promote --email you@example.com
+```
+
+Encrypt any legacy plaintext Stellar secrets:
+
+```bash
+cargo run --bin provision-admin -- encrypt-secrets
+```
+
+**Option B — SQL seed script**
+
+```bash
+psql -U postgres -d pamodzi \
+  -v admin_email='you@example.com' \
+  -f backend/scripts/seed_platform_admin.sql
+```
+
+The user must already exist (register normally first) before promotion.
 
 ### API overview
 

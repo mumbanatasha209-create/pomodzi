@@ -8,7 +8,8 @@ pub async fn list_transactions(
 ) -> AppResult<Json<Vec<Transaction>>> {
     let rows = sqlx::query_as::<_, Transaction>(
         r#"SELECT id, user_id, group_id, tx_type::text AS tx_type, amount, currency,
-                  status::text AS status, stellar_tx_hash, memo, created_at
+                  status::text AS status, blockchain_hash,
+                  transaction_source::text AS transaction_source, memo, created_at
            FROM transactions WHERE user_id = $1
            ORDER BY created_at DESC
            LIMIT 200"#,

@@ -30,7 +30,7 @@ pub async fn list_groups(State(state): State<AppState>, _admin: AdminUser) -> Ap
     let rows = sqlx::query_as::<_, SavingsGroup>(
         r#"SELECT id, name, description, admin_id, contribution_amount, currency,
                   frequency::text AS frequency, current_cycle, status::text AS status,
-                  invite_code, created_at, updated_at
+                  invite_code, treasury_public_key, treasury_secret_key, created_at, updated_at
            FROM savings_groups ORDER BY created_at DESC LIMIT 500"#,
     ).fetch_all(&state.db).await?;
     Ok(Json(rows))

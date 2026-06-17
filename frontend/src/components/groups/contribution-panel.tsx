@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { api, ApiError } from "@/lib/api";
-import { formatAmount, formatDate } from "@/lib/utils";
+import { formatAmount, formatDate, parseMoneyInput } from "@/lib/utils";
 import type { Contribution, ContributeResponse, SavingsGroup } from "@/lib/types";
 
 export function ContributionPanel({
@@ -20,8 +20,8 @@ export function ContributionPanel({
   contributions: Contribution[];
   onContributed?: () => void;
 }) {
-  const defaultAmount = Number(group.contribution_amount) || 0;
-  const [amount, setAmount] = useState(String(defaultAmount));
+  const requiredAmount = String(group.contribution_amount);
+  const [amount, setAmount] = useState(requiredAmount);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ContributeResponse | null>(null);
@@ -32,12 +32,16 @@ export function ContributionPanel({
     setSubmitting(true);
     setResult(null);
     try {
-      const res = await api.contribute(group.id, { amount: Number(amount) });
+      const parsed = parseMoneyInput(amount);
+      if (parsed !== parseMoneyInput(requiredAmount)) {
+        throw new Error("Contribution amount must match the required group amount.");
+      }
+      const res = await api.contribute(group.id, { amount: parsed });
       setResult(res);
       onContributed?.();
       setTimeout(() => setResult(null), 6000);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Contribution failed");
+      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Contribution failed");
     } finally {
       setSubmitting(false);
     }
@@ -50,16 +54,20 @@ export function ContributionPanel({
           <Coins className="h-3.5 w-3.5 text-primary" />
           Contribute to cycle {group.current_cycle}
         </Label>
+        <p className="text-xs text-muted-foreground">
+          Required amount: {formatAmount(requiredAmount, group.currency)} (must match exactly)
+        </p>
         <div className="relative">
           <Input
             id="amount"
-            type="number"
-            min="0"
-            step="0.0000001"
+            type="text"
+            inputMode="decimal"
+            pattern="^\d+(\.\d{1,2})?$"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="tabular h-12 pr-16 text-lg font-semibold"
             required
+            readOnly
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
             {group.currency}
@@ -76,18 +84,17 @@ export function ContributionPanel({
         >
           {submitting ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Processing on-chain…
+              <Loader2 className="h-4 w-4 animate-spin" /> Submitting Stellar testnet payment…
             </>
           ) : (
             <>
               <Wallet className="h-4 w-4" /> Pay{" "}
-              {formatAmount(amount, group.currency)}
+              {formatAmount(requiredAmount, group.currency)}
             </>
           )}
         </Button>
       </form>
 
-      {/* Success / payout celebration */}
       <AnimatePresence>
         {result ? (
           <motion.div
@@ -110,12 +117,12 @@ export function ContributionPanel({
                 <p className="text-sm font-semibold">
                   {result.payout_triggered
                     ? "Cycle complete — payout sent!"
-                    : "Contribution recorded"}
+                    : "Contribution confirmed on Stellar testnet"}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {result.payout_triggered
                     ? "Every member has paid. The rotating payout was processed and the next cycle has begun."
-                    : "Your contribution for this cycle is confirmed on the ledger."}
+                    : "Your contribution was verified on the Stellar testnet before being recorded."}
                 </p>
               </div>
             </div>

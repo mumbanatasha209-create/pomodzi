@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { api } from "@/lib/api";
-import { cn, formatAmount, formatDate } from "@/lib/utils";
+import { cn, formatAmount, formatDate, stellarExplorerTxUrl } from "@/lib/utils";
 import type { Transaction, TxStatus, TxType } from "@/lib/types";
 
 const statusVariant: Record<TxStatus, "success" | "warning" | "destructive"> = {
@@ -172,6 +172,19 @@ export default function TransactionsPage() {
                         <p className="truncate text-xs text-muted-foreground">
                           {formatDate(t.created_at)}
                           {t.memo ? ` · ${t.memo}` : ""}
+                          {t.transaction_source === "stellar_testnet" && t.blockchain_hash ? (
+                            <>
+                              {" · "}
+                              <a
+                                href={stellarExplorerTxUrl(t.blockchain_hash)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                View on Stellar
+                              </a>
+                            </>
+                          ) : null}
                         </p>
                       </div>
                     </div>

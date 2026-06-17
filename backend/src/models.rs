@@ -1,12 +1,8 @@
-use bigdecimal::BigDecimal;
+use rust_decimal::Decimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
-
-// NOTE: PostgreSQL enum columns are read/written as `TEXT` (via `::text`
-// casts in SQL) to keep the SQLx layer simple and robust. Validation of the
-// allowed values happens in the handlers.
 
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct User {
@@ -18,14 +14,12 @@ pub struct User {
     pub password_hash: String,
     pub role: String,
     pub stellar_public_key: Option<String>,
-    // Secret key is NEVER serialized to the client by default.
     #[serde(skip_serializing)]
     pub stellar_secret_key: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
-/// Public-facing view of a user (no secrets).
 #[derive(Debug, Clone, Serialize)]
 pub struct UserPublic {
     pub id: Uuid,
@@ -57,12 +51,15 @@ pub struct SavingsGroup {
     pub name: String,
     pub description: Option<String>,
     pub admin_id: Uuid,
-    pub contribution_amount: BigDecimal,
+    pub contribution_amount: Decimal,
     pub currency: String,
     pub frequency: String,
     pub current_cycle: i32,
     pub status: String,
     pub invite_code: String,
+    pub treasury_public_key: Option<String>,
+    #[serde(skip_serializing)]
+    pub treasury_secret_key: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -78,7 +75,6 @@ pub struct GroupMember {
     pub joined_at: DateTime<Utc>,
 }
 
-/// Member joined with user details + current-cycle contribution status.
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct MemberView {
     pub user_id: Uuid,
@@ -87,7 +83,7 @@ pub struct MemberView {
     pub rotation_order: i32,
     pub has_received_payout: bool,
     pub stellar_public_key: Option<String>,
-    pub contribution_status: String, // 'paid' | 'pending'
+    pub contribution_status: String,
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]
@@ -96,9 +92,10 @@ pub struct Contribution {
     pub group_id: Uuid,
     pub user_id: Uuid,
     pub cycle: i32,
-    pub amount: BigDecimal,
+    pub amount: Decimal,
     pub status: String,
-    pub stellar_tx_hash: Option<String>,
+    pub blockchain_hash: Option<String>,
+    pub transaction_source: String,
     pub paid_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
@@ -109,9 +106,10 @@ pub struct Payout {
     pub group_id: Uuid,
     pub cycle: i32,
     pub recipient_id: Uuid,
-    pub amount: BigDecimal,
+    pub amount: Decimal,
     pub status: String,
-    pub stellar_tx_hash: Option<String>,
+    pub blockchain_hash: Option<String>,
+    pub transaction_source: String,
     pub paid_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
@@ -122,10 +120,11 @@ pub struct Transaction {
     pub user_id: Option<Uuid>,
     pub group_id: Option<Uuid>,
     pub tx_type: String,
-    pub amount: BigDecimal,
+    pub amount: Decimal,
     pub currency: String,
     pub status: String,
-    pub stellar_tx_hash: Option<String>,
+    pub blockchain_hash: Option<String>,
+    pub transaction_source: String,
     pub memo: Option<String>,
     pub created_at: DateTime<Utc>,
 }
@@ -151,8 +150,6 @@ pub struct AuditLog {
     pub created_at: DateTime<Utc>,
 }
 
-// ----------------------- Request / response DTOs -----------------------
-
 #[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
     pub full_name: String,
@@ -177,8 +174,9 @@ pub struct AuthResponse {
 pub struct CreateGroupRequest {
     pub name: String,
     pub description: Option<String>,
-    pub contribution_amount: f64,
-    pub frequency: String, // 'weekly' | 'monthly'
+    /// Money amount as a decimal string, e.g. "10.50"
+    pub contribution_amount: String,
+    pub frequency: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -204,6 +202,11 @@ pub struct SetRotationRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct ContributeRequest {
-    /// Optional: defaults to the group's configured contribution amount.
-    pub amount: Option<f64>,
+    /// Required decimal string matching the group's contribution_amount exactly.
+    pub amount: String,
+}
+
+pub fn parse_money(input: &str) -> Result<Decimal, String> {
+    use std::str::FromStr;
+    Decimal::from_str(input.trim()).map_err(|_| "Invalid money amount".to_string())
 }

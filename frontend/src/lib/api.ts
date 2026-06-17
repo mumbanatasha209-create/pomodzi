@@ -106,7 +106,7 @@ export const api = {
   createGroup: (input: {
     name: string;
     description?: string;
-    contribution_amount: number;
+    contribution_amount: string;
     currency?: string;
     frequency: "weekly" | "monthly";
   }) => request<SavingsGroup>("/api/groups", { method: "POST", body: input }),
@@ -114,8 +114,8 @@ export const api = {
     request<SavingsGroup>("/api/groups/join", { method: "POST", body: input }),
   addMember: (id: string, input: { email: string }) =>
     request<GroupMember>(`/api/groups/${id}/members`, { method: "POST", body: input }),
-  contribute: (id: string, input?: { amount?: number }) =>
-    request<ContributeResponse>(`/api/groups/${id}/contribute`, { method: "POST", body: input ?? {} }),
+  contribute: (id: string, input: { amount: string }) =>
+    request<ContributeResponse>(`/api/groups/${id}/contribute`, { method: "POST", body: input }),
   updateRotation: (
     id: string,
     input: { order: { user_id: string; rotation_order: number }[] },

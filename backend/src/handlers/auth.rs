@@ -1,17 +1,16 @@
 use crate::{
     auth::{jwt, password, AuthUser},
     error::{AppError, AppResult},
-    handlers::{get_user, notify, write_audit},
+    handlers::{encrypt_secret, get_user, notify, write_audit},
     models::{AuthResponse, LoginRequest, RegisterRequest, User, UserPublic},
     state::AppState,
     stellar::StellarClient,
 };
 use axum::{extract::State, Json};
+use rust_decimal::Decimal;
 use serde_json::json;
 
-/// POST /api/auth/register
-/// Creates the user, provisions a Stellar testnet wallet, funds it via
-/// Friendbot, and returns a JWT.
+/// POST /api/auth/register — always creates a regular member (never platform_admin).
 pub async fn register(
     State(state): State<AppState>,
     Json(payload): Json<RegisterRequest>,
@@ -26,7 +25,6 @@ pub async fn register(
         ));
     }
 
-    // Reject duplicate email early for a clean error message.
     let existing = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE email = $1")
         .bind(&email)
         .fetch_one(&state.db)
@@ -36,21 +34,13 @@ pub async fn register(
     }
 
     let password_hash = password::hash_password(&payload.password)?;
-
-    // Bootstrap platform admin by configured email.
-    let role = if email == state.config.platform_admin_email.to_lowercase() {
-        "platform_admin"
-    } else {
-        "member"
-    };
-
-    // Provision Stellar testnet wallet.
     let keypair = StellarClient::generate_keypair();
+    let encrypted_secret = encrypt_secret(&state.crypto, &keypair.secret_key)?;
 
     let user = sqlx::query_as::<_, User>(
         r#"INSERT INTO users
             (full_name, email, phone, password_hash, role, stellar_public_key, stellar_secret_key)
-           VALUES ($1, $2, $3, $4, $5::user_role, $6, $7)
+           VALUES ($1, $2, $3, $4, 'member'::user_role, $5, $6)
            RETURNING id, full_name, email, phone, password_hash, role::text AS role,
                      stellar_public_key, stellar_secret_key, created_at, updated_at"#,
     )
@@ -58,20 +48,21 @@ pub async fn register(
     .bind(&email)
     .bind(payload.phone.as_deref())
     .bind(&password_hash)
-    .bind(role)
     .bind(&keypair.public_key)
-    .bind(&keypair.secret_key)
+    .bind(&encrypted_secret)
     .fetch_one(&state.db)
     .await?;
 
-    // Fund the wallet on testnet (best-effort, non-blocking failure).
     match state.stellar.fund_with_friendbot(&keypair.public_key).await {
         Ok(hash) => {
             sqlx::query(
-                r#"INSERT INTO transactions (user_id, tx_type, amount, status, stellar_tx_hash, memo)
-                   VALUES ($1, 'wallet_funding', 10000, 'success', $2, 'Testnet wallet funded by Friendbot')"#,
+                r#"INSERT INTO transactions (user_id, tx_type, amount, status, blockchain_hash,
+                   transaction_source, memo)
+                   VALUES ($1, 'wallet_funding', $2, 'success', $3, 'stellar_testnet',
+                   'Testnet wallet funded by Friendbot')"#,
             )
             .bind(user.id)
+            .bind(Decimal::from(10000))
             .bind(hash.as_deref())
             .execute(&state.db)
             .await
@@ -93,7 +84,7 @@ pub async fn register(
         "user.register",
         "user",
         Some(user.id.to_string()),
-        json!({ "email": email, "role": role }),
+        json!({ "email": email, "role": "member" }),
     )
     .await;
 
@@ -126,11 +117,34 @@ pub async fn login(
     .bind(&email)
     .fetch_optional(&state.db)
     .await?
-    .ok_or_else(|| AppError::Unauthorized)?;
+    .ok_or_else(|| {
+        tracing::warn!("failed login attempt for unknown email: {email}");
+        AppError::Unauthorized
+    })?;
 
     if !password::verify_password(&payload.password, &user.password_hash) {
+        write_audit(
+            &state.db,
+            Some(user.id),
+            "auth.login_failed",
+            "user",
+            Some(user.id.to_string()),
+            json!({ "email": email }),
+        )
+        .await;
+        tracing::warn!("failed login attempt for user {}", user.id);
         return Err(AppError::Unauthorized);
     }
+
+    write_audit(
+        &state.db,
+        Some(user.id),
+        "auth.login",
+        "user",
+        Some(user.id.to_string()),
+        json!({ "email": email }),
+    )
+    .await;
 
     let token = jwt::issue_token(
         &state.config.jwt_secret,

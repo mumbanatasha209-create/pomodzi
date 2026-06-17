@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn, formatAmount } from "@/lib/utils";
+import { cn, formatAmount, parseMoneyInput } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { api, ApiError } from "@/lib/api";
 import type { ContributionFrequency } from "@/lib/types";
@@ -36,7 +36,7 @@ export default function NewGroupPage() {
       const group = await api.createGroup({
         name: form.name,
         description: form.description || undefined,
-        contribution_amount: Number(form.contribution_amount),
+        contribution_amount: parseMoneyInput(form.contribution_amount),
         currency: form.currency,
         frequency: form.frequency,
       });

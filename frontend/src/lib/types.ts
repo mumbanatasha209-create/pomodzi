@@ -6,6 +6,11 @@ export type GroupStatus = "active" | "completed" | "paused";
 export type ContributionStatus = "pending" | "paid";
 export type PayoutStatus = "pending" | "completed" | "failed";
 export type TxType = "wallet_funding" | "contribution" | "payout" | "transfer";
+export type TxSource =
+  | "stellar_testnet"
+  | "internal_ledger"
+  | "mobile_money_demo"
+  | "bank_transfer_demo";
 export type TxStatus = "pending" | "success" | "failed";
 export type InvitationStatus = "pending" | "accepted" | "declined";
 export type MembershipStatus = "active" | "removed";
@@ -88,7 +93,8 @@ export interface Contribution {
   cycle: number;
   amount: string | number;
   status: ContributionStatus;
-  stellar_tx_hash?: string | null;
+  blockchain_hash?: string | null;
+  transaction_source?: TxSource;
   paid_at?: string | null;
   created_at: string;
   full_name?: string;
@@ -101,7 +107,8 @@ export interface Payout {
   recipient_id: string;
   amount: string | number;
   status: PayoutStatus;
-  stellar_tx_hash?: string | null;
+  blockchain_hash?: string | null;
+  transaction_source?: TxSource;
   paid_at?: string | null;
   created_at: string;
   recipient_name?: string;
@@ -115,7 +122,8 @@ export interface Transaction {
   amount: string | number;
   currency: string;
   status: TxStatus;
-  stellar_tx_hash?: string | null;
+  blockchain_hash?: string | null;
+  transaction_source?: TxSource;
   memo?: string | null;
   created_at: string;
 }

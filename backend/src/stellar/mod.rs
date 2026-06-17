@@ -1,27 +1,29 @@
 //! Stellar **testnet** integration.
 //!
-//! This module is intentionally limited to safe, dependency-light testnet
-//! operations that genuinely touch the Stellar network:
-//!   * generating an ed25519 keypair encoded as Stellar strkeys (G.../S...)
-//!   * funding a new account via Friendbot (testnet faucet)
-//!   * reading the native (XLM) balance from Horizon
-//!
-//! NO MAINNET. NO REAL MONEY. Secret keys are stored for demo purposes only.
+//! Testnet-only operations: keypair generation, Friendbot funding, Horizon balance
+//! reads, and native XLM payment submission.
+
+mod payments;
 
 use ed25519_dalek::SigningKey;
+use payments::submit_native_payment;
 use rand::rngs::OsRng;
+use rust_decimal::Decimal;
 use serde::Deserialize;
+
+pub use payments::PaymentResult;
 
 #[derive(Debug, Clone)]
 pub struct StellarKeypair {
-    pub public_key: String, // G...
-    pub secret_key: String, // S...
+    pub public_key: String,
+    pub secret_key: String,
 }
 
 #[derive(Clone)]
 pub struct StellarClient {
     horizon_url: String,
     friendbot_url: String,
+    network_passphrase: String,
     http: reqwest::Client,
 }
 
@@ -32,6 +34,7 @@ struct FriendbotResponse {
 
 #[derive(Debug, Deserialize)]
 struct HorizonAccount {
+    sequence: String,
     balances: Vec<HorizonBalance>,
 }
 
@@ -41,37 +44,38 @@ struct HorizonBalance {
     asset_type: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct HorizonTxResponse {
+    hash: String,
+    successful: bool,
+}
+
 impl StellarClient {
-    pub fn new(horizon_url: String, friendbot_url: String) -> Self {
+    pub fn new(horizon_url: String, friendbot_url: String, network_passphrase: String) -> Self {
         Self {
             horizon_url,
             friendbot_url,
+            network_passphrase,
             http: reqwest::Client::new(),
         }
     }
 
-    /// Generate a brand-new Stellar keypair (ed25519, strkey-encoded).
     pub fn generate_keypair() -> StellarKeypair {
         let mut csprng = OsRng;
         let signing_key = SigningKey::generate(&mut csprng);
         let secret_bytes: [u8; 32] = signing_key.to_bytes();
         let public_bytes: [u8; 32] = signing_key.verifying_key().to_bytes();
 
-        let public_key = encode_strkey(VersionByte::PublicKey, &public_bytes);
-        let secret_key = encode_strkey(VersionByte::SecretSeed, &secret_bytes);
-
         StellarKeypair {
-            public_key,
-            secret_key,
+            public_key: encode_strkey(VersionByte::PublicKey, &public_bytes),
+            secret_key: encode_strkey(VersionByte::SecretSeed, &secret_bytes),
         }
     }
 
-    /// Fund a testnet account using Friendbot. Returns the funding tx hash.
     pub async fn fund_with_friendbot(&self, public_key: &str) -> anyhow::Result<Option<String>> {
         let url = format!("{}/?addr={}", self.friendbot_url, public_key);
         let resp = self.http.get(url).send().await?;
         if !resp.status().is_success() {
-            // Account may already be funded — not fatal for the demo.
             tracing::warn!("friendbot funding returned status {}", resp.status());
             return Ok(None);
         }
@@ -79,22 +83,56 @@ impl StellarClient {
         Ok(body.hash)
     }
 
-    /// Fetch the native XLM balance for an account from Horizon.
-    /// Returns "0" if the account is not yet funded / found.
     pub async fn get_native_balance(&self, public_key: &str) -> anyhow::Result<String> {
-        let url = format!("{}/accounts/{}", self.horizon_url, public_key);
-        let resp = self.http.get(url).send().await?;
-        if !resp.status().is_success() {
-            return Ok("0".to_string());
-        }
-        let account: HorizonAccount = resp.json().await?;
-        let native = account
+        let account = self.fetch_account(public_key).await?;
+        Ok(account
             .balances
             .into_iter()
             .find(|b| b.asset_type == "native")
             .map(|b| b.balance)
-            .unwrap_or_else(|| "0".to_string());
-        Ok(native)
+            .unwrap_or_else(|| "0".to_string()))
+    }
+
+    pub async fn fetch_account(&self, public_key: &str) -> anyhow::Result<HorizonAccount> {
+        let url = format!("{}/accounts/{}", self.horizon_url, public_key);
+        let resp = self.http.get(url).send().await?;
+        if !resp.status().is_success() {
+            anyhow::bail!("account {public_key} not found on testnet");
+        }
+        Ok(resp.json().await?)
+    }
+
+    /// Submit a native XLM payment on Stellar testnet and return the on-chain hash.
+    pub async fn send_native_payment(
+        &self,
+        source_secret: &str,
+        destination_public: &str,
+        amount: &Decimal,
+    ) -> anyhow::Result<PaymentResult> {
+        let account = self
+            .fetch_account(&payments::public_from_secret(source_secret)?)
+            .await?;
+        let sequence: i64 = account.sequence.parse()?;
+        submit_native_payment(
+            &self.http,
+            &self.horizon_url,
+            &self.network_passphrase,
+            source_secret,
+            destination_public,
+            amount,
+            sequence,
+        )
+        .await
+    }
+
+    pub async fn verify_transaction(&self, tx_hash: &str) -> anyhow::Result<bool> {
+        let url = format!("{}/transactions/{}", self.horizon_url, tx_hash);
+        let resp = self.http.get(url).send().await?;
+        if !resp.status().is_success() {
+            return Ok(false);
+        }
+        let body: HorizonTxResponse = resp.json().await?;
+        Ok(body.successful)
     }
 }
 
@@ -107,7 +145,6 @@ enum VersionByte {
 impl VersionByte {
     fn value(self) -> u8 {
         match self {
-            // Stellar StrKey version bytes: 6 << 3 = G..., 18 << 3 = S...
             VersionByte::PublicKey => 6 << 3,
             VersionByte::SecretSeed => 18 << 3,
         }

@@ -1,10 +1,8 @@
 use crate::{handlers, state::AppState};
 use axum::{routing::{get, post, put}, Router};
 
-pub fn api_router() -> Router<AppState> {
+pub fn protected_router() -> Router<AppState> {
     Router::new()
-        .route("/api/auth/register", post(handlers::auth::register))
-        .route("/api/auth/login", post(handlers::auth::login))
         .route("/api/auth/me", get(handlers::auth::me))
         .route("/api/wallet", get(handlers::users::wallet))
         .route("/api/groups", post(handlers::groups::create_group))

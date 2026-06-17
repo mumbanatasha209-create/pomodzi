@@ -6,11 +6,26 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Format a numeric amount with a currency code (defaults to XLM). */
+/** Format a numeric amount with a currency code (defaults to XLM). Uses string-safe parsing. */
 export function formatAmount(amount: number | string, currency = "XLM") {
-  const n = typeof amount === "string" ? parseFloat(amount) : amount;
+  const raw = typeof amount === "string" ? amount.trim() : String(amount);
+  const n = Number(raw);
   const value = Number.isFinite(n) ? n : 0;
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`;
+  return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+}
+
+/** Parse a money string for API submission (avoids floating-point drift). */
+export function parseMoneyInput(value: string): string {
+  const trimmed = value.trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    throw new Error("Enter a valid amount with up to 2 decimal places");
+  }
+  return trimmed;
+}
+
+/** Stellar testnet explorer link — only when a real on-chain hash exists. */
+export function stellarExplorerTxUrl(hash: string) {
+  return `https://stellar.expert/explorer/testnet/tx/${hash}`;
 }
 
 /** Human friendly date. */

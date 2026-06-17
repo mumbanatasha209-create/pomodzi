@@ -1,22 +1,27 @@
 use crate::{
     auth::AuthUser,
     error::{AppError, AppResult},
-    handlers::{generate_invite_code, notify, write_audit},
+    handlers::{encrypt_secret, generate_invite_code, notify, write_audit},
     models::{
         AddMemberRequest, CreateGroupRequest, GroupMember, JoinGroupRequest, MemberView,
-        SavingsGroup, SetRotationRequest, User,
+        SavingsGroup, SetRotationRequest, User, parse_money,
     },
     state::AppState,
+    stellar::StellarClient,
 };
 use axum::{
     extract::{Path, State},
     Json,
 };
+use rust_decimal::Decimal;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-// -------------------------- membership helpers --------------------------
+const GROUP_SELECT: &str = r#"SELECT id, name, description, admin_id, contribution_amount, currency,
+       frequency::text AS frequency, current_cycle, status::text AS status,
+       invite_code, treasury_public_key, treasury_secret_key, created_at, updated_at
+       FROM savings_groups"#;
 
 pub async fn is_active_member(db: &PgPool, group_id: Uuid, user_id: Uuid) -> AppResult<bool> {
     let count = sqlx::query_scalar::<_, i64>(
@@ -30,16 +35,12 @@ pub async fn is_active_member(db: &PgPool, group_id: Uuid, user_id: Uuid) -> App
 }
 
 async fn load_group(db: &PgPool, group_id: Uuid) -> AppResult<SavingsGroup> {
-    sqlx::query_as::<_, SavingsGroup>(
-        r#"SELECT id, name, description, admin_id, contribution_amount, currency,
-                  frequency::text AS frequency, current_cycle, status::text AS status,
-                  invite_code, created_at, updated_at
-           FROM savings_groups WHERE id = $1"#,
-    )
-    .bind(group_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::NotFound("Group not found".into()))
+    let query = format!("{GROUP_SELECT} WHERE id = $1");
+    sqlx::query_as::<_, SavingsGroup>(&query)
+        .bind(group_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Group not found".into()))
 }
 
 async fn members_view(db: &PgPool, group_id: Uuid, cycle: i32) -> AppResult<Vec<MemberView>> {
@@ -61,8 +62,6 @@ async fn members_view(db: &PgPool, group_id: Uuid, cycle: i32) -> AppResult<Vec<
     Ok(members)
 }
 
-// ------------------------------- handlers -------------------------------
-
 /// POST /api/groups
 pub async fn create_group(
     State(state): State<AppState>,
@@ -77,32 +76,43 @@ pub async fn create_group(
             "Frequency must be 'weekly' or 'monthly'".into(),
         ));
     }
-    if payload.contribution_amount <= 0.0 {
+
+    let contribution_amount = parse_money(&payload.contribution_amount)
+        .map_err(|m| AppError::BadRequest(m))?;
+    if contribution_amount <= Decimal::ZERO {
         return Err(AppError::BadRequest(
             "Contribution amount must be greater than zero".into(),
         ));
     }
 
+    let treasury = StellarClient::generate_keypair();
+    let encrypted_treasury_secret = encrypt_secret(&state.crypto, &treasury.secret_key)?;
     let invite_code = generate_invite_code();
 
     let group = sqlx::query_as::<_, SavingsGroup>(
         r#"INSERT INTO savings_groups
-              (name, description, admin_id, contribution_amount, frequency, invite_code)
-           VALUES ($1, $2, $3, $4::numeric, $5::contribution_frequency, $6)
+              (name, description, admin_id, contribution_amount, frequency, invite_code,
+               treasury_public_key, treasury_secret_key)
+           VALUES ($1, $2, $3, $4, $5::contribution_frequency, $6, $7, $8)
            RETURNING id, name, description, admin_id, contribution_amount, currency,
                      frequency::text AS frequency, current_cycle, status::text AS status,
-                     invite_code, created_at, updated_at"#,
+                     invite_code, treasury_public_key, treasury_secret_key, created_at, updated_at"#,
     )
     .bind(payload.name.trim())
     .bind(payload.description.as_deref())
     .bind(auth.user_id)
-    .bind(payload.contribution_amount)
+    .bind(contribution_amount)
     .bind(&payload.frequency)
     .bind(&invite_code)
+    .bind(&treasury.public_key)
+    .bind(&encrypted_treasury_secret)
     .fetch_one(&state.db)
     .await?;
 
-    // Add the creator as the first member (rotation order 1).
+    if let Err(e) = state.stellar.fund_with_friendbot(&treasury.public_key).await {
+        tracing::warn!("treasury friendbot funding failed: {e}");
+    }
+
     sqlx::query(
         r#"INSERT INTO group_members (group_id, user_id, rotation_order)
            VALUES ($1, $2, 1)"#,
@@ -112,7 +122,6 @@ pub async fn create_group(
     .execute(&state.db)
     .await?;
 
-    // Promote a plain member to group_admin (platform_admin stays as-is).
     sqlx::query("UPDATE users SET role = 'group_admin'::user_role WHERE id = $1 AND role = 'member'::user_role")
         .bind(auth.user_id)
         .execute(&state.db)
@@ -131,7 +140,7 @@ pub async fn create_group(
     Ok(Json(group))
 }
 
-/// GET /api/groups  — groups the user belongs to.
+/// GET /api/groups
 pub async fn list_my_groups(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -139,7 +148,8 @@ pub async fn list_my_groups(
     let rows = sqlx::query_as::<_, SavingsGroup>(
         r#"SELECT g.id, g.name, g.description, g.admin_id, g.contribution_amount, g.currency,
                   g.frequency::text AS frequency, g.current_cycle, g.status::text AS status,
-                  g.invite_code, g.created_at, g.updated_at
+                  g.invite_code, g.treasury_public_key, g.treasury_secret_key,
+                  g.created_at, g.updated_at
            FROM savings_groups g
            JOIN group_members gm ON gm.group_id = g.id
            WHERE gm.user_id = $1 AND gm.status = 'active'
@@ -167,7 +177,7 @@ pub async fn list_my_groups(
     Ok(Json(out))
 }
 
-/// GET /api/groups/:id — full detail (members, cycle status).
+/// GET /api/groups/:id
 pub async fn get_group(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -185,7 +195,6 @@ pub async fn get_group(
         .filter(|m| m.contribution_status == "paid")
         .count();
     let total = members.len();
-
     let is_admin = group.admin_id == auth.user_id;
 
     Ok(Json(json!({
@@ -207,7 +216,7 @@ pub async fn join_group(
     let group = sqlx::query_as::<_, SavingsGroup>(
         r#"SELECT id, name, description, admin_id, contribution_amount, currency,
                   frequency::text AS frequency, current_cycle, status::text AS status,
-                  invite_code, created_at, updated_at
+                  invite_code, treasury_public_key, treasury_secret_key, created_at, updated_at
            FROM savings_groups WHERE invite_code = $1"#,
     )
     .bind(payload.invite_code.trim().to_uppercase())
@@ -242,7 +251,7 @@ pub async fn join_group(
     Ok(Json(group))
 }
 
-/// POST /api/groups/:id/members  (group admin only)
+/// POST /api/groups/:id/members
 pub async fn add_member(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -291,7 +300,7 @@ pub async fn add_member(
     Ok(Json(member))
 }
 
-/// PUT /api/groups/:id/rotation  (group admin only)
+/// PUT /api/groups/:id/rotation
 pub async fn set_rotation(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -330,7 +339,6 @@ pub async fn set_rotation(
     Ok(Json(members))
 }
 
-/// Insert a member with the next available rotation order.
 async fn add_member_internal(
     db: &PgPool,
     group_id: Uuid,
