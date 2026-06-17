@@ -17,9 +17,9 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pamodzi Finance — Save together. Grow across borders.",
+  title: "Pamodzi Finance — Community wealth, moving on Stellar.",
   description:
-    "International community savings and rotating payout groups powered by Stellar. Savings circles, digital wallets, cross-border contributions, and multi-currency treasuries.",
+    "Create global savings circles, track contributions, and automate rotating payouts across borders. Powered by Stellar Testnet.",
 };
 
 export const viewport: Viewport = {

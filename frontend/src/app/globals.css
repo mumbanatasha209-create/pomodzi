@@ -342,3 +342,116 @@
 .animate-float {
   animation: float 7s ease-in-out infinite;
 }
+
+/* =============================================================================
+   Landing page — Framer-quality premium fintech
+   ========================================================================== */
+.landing-mesh {
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 30%, hsl(174 80% 45% / 0.22), transparent 60%),
+    radial-gradient(ellipse 45% 35% at 75% 25%, hsl(190 90% 50% / 0.18), transparent 55%),
+    radial-gradient(ellipse 40% 45% at 55% 70%, hsl(152 70% 40% / 0.14), transparent 60%),
+    radial-gradient(ellipse 35% 30% at 30% 80%, hsl(200 80% 50% / 0.12), transparent 55%);
+  background-size: 200% 200%;
+  animation: mesh-shift 18s ease-in-out infinite;
+}
+
+.landing-mesh-alt {
+  background:
+    radial-gradient(ellipse 40% 35% at 65% 40%, hsl(174 70% 50% / 0.15), transparent 55%),
+    radial-gradient(ellipse 35% 40% at 25% 60%, hsl(256 70% 60% / 0.08), transparent 50%);
+  background-size: 180% 180%;
+  animation: mesh-shift-alt 22s ease-in-out infinite;
+}
+
+.landing-perspective {
+  perspective: 1200px;
+}
+
+.landing-card-3d {
+  transform-style: preserve-3d;
+  transform: rotateX(2deg) rotateY(-3deg);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-card-3d:hover {
+  transform: rotateX(0deg) rotateY(0deg) translateZ(8px);
+}
+
+.landing-section-glow {
+  position: relative;
+}
+.landing-section-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    hsl(174 80% 50% / 0.15),
+    transparent 40%,
+    hsl(152 70% 45% / 0.1)
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.landing-section-glow:hover::before {
+  opacity: 1;
+}
+
+@keyframes mesh-shift {
+  0%, 100% { background-position: 0% 50%; }
+  33% { background-position: 100% 0%; }
+  66% { background-position: 50% 100%; }
+}
+
+@keyframes mesh-shift-alt {
+  0%, 100% { background-position: 100% 50%; }
+  50% { background-position: 0% 100%; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+}
+
+.landing-glow-pulse {
+  animation: glow-pulse 6s ease-in-out infinite;
+}
+
+/* =============================================================================
+   Landing page — Framer-quality premium fintech
+   ========================================================================== */
+.landing-mesh {
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 30%, hsl(174 80% 45% / 0.22), transparent 60%),
+    radial-gradient(ellipse 45% 35% at 75% 25%, hsl(190 90% 50% / 0.18), transparent 55%),
+    radial-gradient(ellipse 40% 45% at 55% 70%, hsl(152 70% 40% / 0.14), transparent 60%),
+    radial-gradient(ellipse 35% 30% at 85% 65%, hsl(210 80% 55% / 0.12), transparent 50%);
+  filter: blur(60px);
+}
+
+.landing-mesh-alt {
+  background:
+    radial-gradient(ellipse 40% 35% at 30% 60%, hsl(174 80% 50% / 0.15), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 70% 40%, hsl(256 70% 60% / 0.08), transparent 60%);
+  filter: blur(80px);
+}
+
+.landing-perspective {
+  perspective: 1200px;
+}
+
+.landing-card-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-card-3d:hover {
+  transform: rotateX(2deg) rotateY(-2deg) translateZ(8px);
+}
+
+.landing-glow-text {
+  text-shadow: 0 0 60px hsl(174 80% 50% / 0.35);
+}

@@ -5,367 +5,556 @@ import { motion } from "framer-motion";
 import {
   ArrowRight,
   BadgeCheck,
-  Coins,
+  CircleDollarSign,
+  FileSearch,
   Globe2,
+  KeyRound,
   Layers,
   LineChart,
   Lock,
-  PiggyBank,
   Repeat,
   ShieldCheck,
   Sparkles,
   Users,
+  Vault,
   Wallet,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Wordmark } from "@/components/shared/logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { AnimatedNumber } from "@/components/ui/animated-number";
-import { Sparkline, makeSeries } from "@/components/ui/charts";
-import { Reveal, Stagger, staggerItem } from "@/components/shared/reveal";
+import {
+  AnimatedCounter,
+  FeatureCard,
+  FloatingDashboardPreview,
+  GlowBackground,
+  GlobalNetwork,
+  MoneyFlowAnimation,
+  PremiumButton,
+  TrustBadge,
+} from "@/components/landing";
 
 const features = [
   {
     icon: Users,
     title: "Savings circles",
-    desc: "Create savings circles, chamas, stokvels, cooperatives, and community groups with shared goals.",
+    description:
+      "Launch rotating savings circles for families, diaspora groups, cooperatives, and community funds — anywhere in the world.",
   },
   {
-    icon: Wallet,
-    title: "Digital wallets",
-    desc: "Every member gets a Stellar digital wallet to fund, contribute, and receive payouts across borders.",
+    icon: Vault,
+    title: "Group treasury",
+    description:
+      "Every circle gets a dedicated on-chain treasury. Contributions pool transparently with real-time balance tracking.",
   },
   {
     icon: Repeat,
-    title: "Stellar-powered payouts",
-    desc: "Automate rotating payouts on Stellar testnet with transparent settlement and near-instant finality.",
+    title: "Automated payouts",
+    description:
+      "When the cycle completes, payouts rotate automatically to the next beneficiary — no manual reconciliation.",
+  },
+  {
+    icon: Wallet,
+    title: "Stellar wallets",
+    description:
+      "Each member receives a non-custodial Stellar wallet. Encrypted secrets, instant settlement, near-zero fees.",
   },
   {
     icon: Globe2,
     title: "Cross-border contributions",
-    desc: "Members in different countries can contribute to the same circle with clear treasury records.",
-  },
-  {
-    icon: Coins,
-    title: "Multi-currency readiness",
-    desc: "Set primary currency per circle — USD, XLM, USDC, EUR, ZAR, KES, NGN, ZMW, and more.",
+    description:
+      "Members in Zambia, Kenya, Nigeria, the UK, or the US can contribute to the same circle in XLM or USDC.",
   },
   {
     icon: LineChart,
-    title: "Transparent group records",
-    desc: "Track contributions, treasury activity, and payout history with immutable on-chain references.",
+    title: "Audit trail",
+    description:
+      "Every contribution and payout links to a real Stellar transaction hash. Full history, zero fake records.",
+  },
+];
+
+const trustItems = [
+  {
+    icon: Layers,
+    title: "Testnet first",
+    description:
+      "Built and verified on Stellar Testnet. Real on-chain transactions before any mainnet deployment.",
+  },
+  {
+    icon: FileSearch,
+    title: "Transparent records",
+    description:
+      "Contribution history, treasury activity, and payout logs are visible to every circle member.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "No fake hashes",
+    description:
+      "Blockchain hashes are only stored after Horizon confirms success. No simulated transactions.",
+  },
+  {
+    icon: CircleDollarSign,
+    title: "Audited payouts",
+    description:
+      "Rotating payouts execute on-chain with verifiable transaction references on Stellar Expert.",
   },
   {
     icon: ShieldCheck,
-    title: "Trust and audit logs",
-    desc: "Platform audit logs and transaction history keep every group accountable and review-ready.",
+    title: "Role-based access",
+    description:
+      "Admins, circle creators, and members each have scoped permissions. Platform audit logs included.",
+  },
+  {
+    icon: KeyRound,
+    title: "Encrypted wallet secrets",
+    description:
+      "Private keys are encrypted at rest. Pamodzi never holds custody of member funds.",
   },
 ];
 
 const stats = [
-  { label: "Pooled on-chain", value: 2.4, suffix: "M XLM", decimals: 1 },
-  { label: "Active circles", value: 1280, suffix: "+" },
-  { label: "Members saving", value: 18400, suffix: "+" },
-  { label: "Payout success", value: 99.9, suffix: "%", decimals: 1 },
+  { label: "Settlement time", value: 5, suffix: "s", decimals: 0 },
+  { label: "Transaction fee", value: 0.00001, suffix: " XLM", decimals: 5 },
+  { label: "Countries supported", value: 50, suffix: "+" },
+  { label: "On-chain transparency", value: 100, suffix: "%" },
 ];
 
-const steps = [
-  { icon: Users, title: "Create or join", desc: "Start a circle or join with an invite code in seconds." },
-  { icon: Coins, title: "Contribute", desc: "Fund the cycle from your wallet. Everyone pays in." },
-  { icon: PiggyBank, title: "Get paid", desc: "Payouts rotate automatically to each member, in turn." },
-];
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.span
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3.5 py-1.5 text-xs font-medium text-cyan-300"
+    >
+      <Sparkles className="h-3.5 w-3.5" />
+      {children}
+    </motion.span>
+  );
+}
+
+function SectionHeading({
+  title,
+  subtitle,
+  align = "center",
+}: {
+  title: string;
+  subtitle: string;
+  align?: "left" | "center";
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.5 }}
+      transition={{ duration: 0.6 }}
+      className={align === "center" ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}
+    >
+      <h2 className="text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+        {title}
+      </h2>
+      <p className="mt-4 text-pretty text-base leading-relaxed text-slate-400 sm:text-lg">
+        {subtitle}
+      </p>
+    </motion.div>
+  );
+}
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
-      {/* Ambient backdrop */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-grid opacity-[0.35] mask-fade-b" />
-        <div className="absolute left-1/2 top-[-12%] h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,hsl(var(--brand-2)/0.28),transparent)] blur-2xl" />
-        <div className="absolute right-[-10%] top-[20%] h-[360px] w-[360px] rounded-full bg-[radial-gradient(closest-side,hsl(var(--brand-violet)/0.22),transparent)] blur-2xl animate-float" />
-      </div>
+    <div className="relative min-h-screen overflow-x-hidden bg-[#020617] text-slate-200">
+      <GlowBackground />
 
-      {/* Nav */}
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/60 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
+      {/* ── Navigation ─────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 border-b border-white/5 bg-[#020617]/70 backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Wordmark />
-          <div className="flex items-center gap-2">
+          <nav className="hidden items-center gap-8 text-sm text-slate-400 md:flex">
+            <a href="#flow" className="transition-colors hover:text-white">
+              How it works
+            </a>
+            <a href="#features" className="transition-colors hover:text-white">
+              Features
+            </a>
+            <a href="#global" className="transition-colors hover:text-white">
+              Global
+            </a>
+            <a href="#trust" className="transition-colors hover:text-white">
+              Trust
+            </a>
+          </nav>
+          <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <Link href="/login" className="hidden sm:block">
-              <Button variant="ghost" size="sm">
-                Log in
-              </Button>
+            <Link
+              href="/login"
+              className="hidden text-sm font-medium text-slate-300 transition-colors hover:text-white sm:block"
+            >
+              Log in
             </Link>
-            <Link href="/register">
-              <Button size="sm">
-                Get started <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            <PremiumButton href="/register" size="default">
+              Get started <ArrowRight className="h-4 w-4" />
+            </PremiumButton>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pt-20">
-        <div className="mx-auto max-w-3xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            Powered by Stellar
-            <span className="h-1 w-1 rounded-full bg-border" />
-            Community wealth, on-chain
-          </motion.div>
+      {/* ── 1. Hero ────────────────────────────────────────────────── */}
+      <section className="relative mx-auto max-w-7xl px-4 pb-20 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pb-28 lg:pt-20">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          {/* Left — copy */}
+          <div className="relative z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-slate-300 backdrop-blur-xl"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
+              </span>
+              Powered by Stellar Testnet
+            </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.05 }}
-            className="text-balance text-4xl font-bold tracking-tight sm:text-6xl"
-          >
-            Save together.
-            <br />
-            <span className="text-gradient">Grow across borders.</span>
-          </motion.h1>
+            <motion.h1
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.08 }}
+              className="text-balance text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-[4.25rem]"
+            >
+              Community wealth,
+              <br />
+              <span className="text-gradient">moving on Stellar.</span>
+            </motion.h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.12 }}
-            className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg"
-          >
-            Pamodzi Finance helps communities create savings circles, track contributions,
-            manage group treasuries, and automate rotating payouts using Stellar.
-          </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.16 }}
+              className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-slate-400 sm:text-lg"
+            >
+              Create global savings circles, track contributions, and automate
+              rotating payouts across borders.
+            </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.18 }}
-            className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
-          >
-            <Link href="/register" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.24 }}
+              className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center"
+            >
+              <PremiumButton href="/register" variant="primary" size="lg">
                 Create your circle <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/login" className="w-full sm:w-auto">
-              <Button size="lg" variant="glass" className="w-full sm:w-auto">
+              </PremiumButton>
+              <PremiumButton href="/login" variant="glass" size="lg">
                 I have an account
-              </Button>
-            </Link>
-          </motion.div>
+              </PremiumButton>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.28 }}
-            className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5 text-primary" /> Non-custodial wallets
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <BadgeCheck className="h-3.5 w-3.5 text-primary" /> Audited payouts
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Globe2 className="h-3.5 w-3.5 text-primary" /> Borderless &amp; low-fee
-            </span>
-          </motion.div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.36 }}
+              className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 text-cyan-400" /> Non-custodial
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <BadgeCheck className="h-3.5 w-3.5 text-cyan-400" /> Real on-chain txs
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Globe2 className="h-3.5 w-3.5 text-cyan-400" /> Cross-border
+              </span>
+            </motion.div>
+          </div>
+
+          {/* Right — animated preview */}
+          <div className="relative z-10 lg:pl-4">
+            <FloatingDashboardPreview />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats strip ────────────────────────────────────────────── */}
+      <section className="relative border-y border-white/5 bg-white/[0.02] backdrop-blur-sm">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-px bg-white/5 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">
+          {stats.map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08 }}
+              className="bg-[#020617]/80 px-6 py-8 text-center sm:text-left"
+            >
+              <p className="tabular text-2xl font-bold text-white sm:text-3xl">
+                <AnimatedCounter
+                  value={s.value}
+                  decimals={s.decimals ?? 0}
+                  suffix={s.suffix}
+                />
+              </p>
+              <p className="mt-1 text-sm text-slate-500">{s.label}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── 2. Live product preview ────────────────────────────────── */}
+      <section className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+        <div className="mb-12 flex flex-col items-start gap-4 sm:items-center sm:text-center">
+          <SectionLabel>Live product preview</SectionLabel>
+          <SectionHeading
+            title="See your circle in motion"
+            subtitle="Contributions flow in, the treasury grows, and payouts release automatically — all visible in a single glass dashboard."
+          />
         </div>
 
-        {/* Hero dashboard preview */}
         <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mx-auto mt-14 max-w-4xl"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.8 }}
+          className="relative mx-auto max-w-5xl"
         >
-          <div className="absolute -inset-4 -z-10 rounded-[2rem] brand-gradient opacity-20 blur-2xl" />
-          <Card className="overflow-hidden p-0 shadow-card-lg" glass>
-            <div className="flex items-center gap-1.5 border-b border-border/60 px-4 py-3">
-              <span className="h-3 w-3 rounded-full bg-destructive/60" />
-              <span className="h-3 w-3 rounded-full bg-[hsl(var(--warning)/0.6)]" />
-              <span className="h-3 w-3 rounded-full bg-[hsl(var(--success)/0.6)]" />
-              <span className="ml-3 text-xs text-muted-foreground">
-                app.pamodzi.finance / overview
-              </span>
-            </div>
-            <div className="grid gap-4 p-4 sm:grid-cols-3 sm:p-6">
-              <div className="sm:col-span-2">
-                <div className="rounded-2xl brand-gradient p-5 text-primary-foreground">
-                  <p className="text-sm text-primary-foreground/80">
-                    Total group balance
-                  </p>
-                  <p className="tabular mt-1 text-3xl font-bold">
-                    <AnimatedNumber value={48250} suffix=" XLM" />
-                  </p>
-                  <div className="mt-4 h-16 opacity-90">
-                    <Sparkline
-                      data={makeSeries(7, 16, 100, 0.5)}
-                      color="hsl(var(--primary-foreground))"
-                      height={64}
-                    />
-                  </div>
+          <div className="absolute -inset-8 rounded-[2.5rem] bg-gradient-to-br from-cyan-500/15 via-transparent to-emerald-500/10 blur-3xl landing-glow-pulse" />
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl">
+            <div className="grid gap-0 lg:grid-cols-5">
+              {/* Left panel — activity feed */}
+              <div className="border-b border-white/10 p-6 lg:col-span-2 lg:border-b-0 lg:border-r">
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Circle activity
+                </p>
+                <p className="mt-1 text-lg font-semibold text-white">Global Family Fund</p>
+                <div className="mt-6 space-y-3">
+                  {[
+                    { who: "Carol", action: "contributed 5 XLM", time: "2m ago", done: true },
+                    { who: "Bob", action: "contributed 5 XLM", time: "5m ago", done: true },
+                    { who: "Alice", action: "contributed 5 XLM", time: "8m ago", done: true },
+                    { who: "Treasury", action: "payout → Alice 15 XLM", time: "Just now", done: true },
+                  ].map((item, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -12 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.3 + i * 0.1 }}
+                      className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2.5"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/20 to-emerald-500/10 text-xs font-bold text-cyan-300">
+                        {item.who[0]}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-white">
+                          <span className="font-medium">{item.who}</span>{" "}
+                          <span className="text-slate-400">{item.action}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-500">{item.time}</p>
+                      </div>
+                      {item.done && (
+                        <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+                      )}
+                    </motion.div>
+                  ))}
                 </div>
               </div>
-              <div className="grid gap-4">
-                <Card className="p-4">
-                  <p className="text-xs text-muted-foreground">This cycle</p>
-                  <p className="tabular mt-1 text-xl font-bold">
-                    <AnimatedNumber value={8} />/10 paid
-                  </p>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "80%" }}
-                      transition={{ duration: 1.2, delay: 0.6 }}
-                      className="h-full brand-gradient"
-                    />
+
+              {/* Right panel — metrics */}
+              <div className="p-6 lg:col-span-3">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-cyan-500/10 to-transparent p-5">
+                    <p className="text-xs text-slate-500">Treasury Balance</p>
+                    <p className="tabular mt-1 text-3xl font-bold text-white">
+                      <AnimatedCounter value={15000} suffix=" XLM" />
+                    </p>
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <p className="text-xs text-muted-foreground">Next payout</p>
-                  <p className="tabular mt-1 text-xl font-bold">
-                    <AnimatedNumber value={4825} suffix=" XLM" />
-                  </p>
-                  <p className="mt-1 text-xs text-[hsl(var(--success))]">
-                    Auto-rotating
-                  </p>
-                </Card>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <p className="text-xs text-slate-500">Contribution Progress</p>
+                    <p className="tabular mt-1 text-3xl font-bold text-white">
+                      <AnimatedCounter value={3} suffix="/5" />
+                    </p>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+                        initial={{ width: 0 }}
+                        whileInView={{ width: "60%" }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 1.2, delay: 0.4 }}
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <p className="text-xs text-slate-500">Next Payout Recipient</p>
+                    <p className="mt-1 text-xl font-semibold text-white">Alice</p>
+                    <p className="mt-0.5 text-sm text-emerald-400">15,000 XLM rotating</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <p className="text-xs text-slate-500">Stellar Network</p>
+                    <p className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-white">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                      Online
+                    </p>
+                    <p className="mt-0.5 font-mono text-[11px] text-cyan-300/70">
+                      0b96e7…9b9ffeb
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {["XLM", "USDC", "Testnet", "Real hashes"].map((chip) => (
+                    <span
+                      key={chip}
+                      className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-300"
+                    >
+                      {chip}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
-          </Card>
+          </div>
         </motion.div>
       </section>
 
-      {/* Stats */}
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <Stagger
-          scroll
-          className="grid grid-cols-2 gap-4 sm:grid-cols-4"
-        >
-          {stats.map((s) => (
-            <motion.div key={s.label} variants={staggerItem}>
-              <Card className="p-5 text-center sm:text-left" hover>
-                <p className="tabular text-2xl font-bold tracking-tight sm:text-3xl">
-                  <AnimatedNumber
-                    value={s.value}
-                    decimals={s.decimals ?? 0}
-                    suffix={s.suffix}
-                  />
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">{s.label}</p>
-              </Card>
-            </motion.div>
+      {/* ── 3. How the money flows ─────────────────────────────────── */}
+      <section id="flow" className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+        <div className="mb-14 flex flex-col items-start gap-4 sm:items-center sm:text-center">
+          <SectionLabel>How the money flows</SectionLabel>
+          <SectionHeading
+            title="From members to payout, on-chain"
+            subtitle="Every XLM contribution follows a transparent path through your group treasury, settles on Stellar Testnet, and releases to the next beneficiary."
+          />
+        </div>
+        <MoneyFlowAnimation />
+      </section>
+
+      {/* ── 4. Features ────────────────────────────────────────────── */}
+      <section id="features" className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+        <div className="mb-14 flex flex-col items-start gap-4 sm:items-center sm:text-center">
+          <SectionLabel>Platform features</SectionLabel>
+          <SectionHeading
+            title="Built for global community finance"
+            subtitle="The trust of traditional savings circles, powered by Stellar's speed, transparency, and near-zero fees."
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((f, i) => (
+            <FeatureCard
+              key={f.title}
+              icon={f.icon}
+              title={f.title}
+              description={f.description}
+              index={i}
+            />
           ))}
-        </Stagger>
+        </div>
       </section>
 
-      {/* Features */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Everything a modern circle needs
-          </h2>
-          <p className="mt-3 text-muted-foreground">
-            The trust of community saving, with the speed and transparency of
-            blockchain.
-          </p>
-        </Reveal>
-
-        <Stagger scroll className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => {
-            const Icon = f.icon;
-            return (
-              <motion.div key={f.title} variants={staggerItem}>
-                <Card hover className="h-full p-6">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 bg-secondary/50 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="mt-4 font-semibold">{f.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                    {f.desc}
-                  </p>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </Stagger>
-      </section>
-
-      {/* How it works */}
-      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <Reveal>
-          <Card className="overflow-hidden p-8 sm:p-12" glass>
-            <div className="mx-auto max-w-2xl text-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--brand-violet)/0.14)] px-3 py-1 text-xs font-medium text-[hsl(var(--brand-violet))]">
-                <Layers className="h-3.5 w-3.5" /> How it works
-              </span>
-              <h2 className="mt-4 text-3xl font-bold tracking-tight">
-                Save together in three steps
-              </h2>
-            </div>
-            <div className="mt-10 grid gap-6 sm:grid-cols-3">
-              {steps.map((s, i) => {
-                const Icon = s.icon;
-                return (
-                  <div key={s.title} className="relative text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl brand-gradient text-primary-foreground shadow-glow">
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <p className="mt-2 text-xs font-medium text-primary">
-                      Step {i + 1}
-                    </p>
-                    <h3 className="mt-1 font-semibold">{s.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">{s.desc}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        </Reveal>
-      </section>
-
-      {/* CTA */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <Reveal>
-          <div className="relative overflow-hidden rounded-3xl brand-gradient p-10 text-center text-primary-foreground sm:p-16">
-            <div className="absolute inset-0 bg-grid opacity-20" />
-            <div className="relative">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Start saving together today
-              </h2>
-              <p className="mx-auto mt-3 max-w-md text-primary-foreground/85">
-                Join thousands building community wealth on Pamodzi. Free to
-                start, transparent by design.
-              </p>
-              <Link href="/register" className="mt-7 inline-block">
-                <Button
-                  size="lg"
-                  variant="glass"
-                  className="bg-background/15 text-primary-foreground hover:bg-background/25"
-                >
-                  Create your free account <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
+      {/* ── 5. Global savings circles ──────────────────────────────── */}
+      <section id="global" className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          <div>
+            <SectionLabel>Global savings circles</SectionLabel>
+            <SectionHeading
+              align="left"
+              title="One circle, members everywhere"
+              subtitle="Pamodzi connects savers across continents. A member in Lusaka, Nairobi, Lagos, London, or New York can contribute to the same rotating fund."
+            />
+            <motion.ul
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="mt-8 space-y-3"
+            >
+              {[
+                "Multi-currency treasuries — XLM, USDC, and more",
+                "Near-instant cross-border settlement",
+                "Country-aware registration and phone validation",
+                "Transparent records for every member",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2.5 text-sm text-slate-400">
+                  <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+                  {item}
+                </li>
+              ))}
+            </motion.ul>
           </div>
-        </Reveal>
+          <GlobalNetwork />
+        </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/60">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:px-6">
+      {/* ── 6. Trust and transparency ──────────────────────────────── */}
+      <section id="trust" className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+        <div className="mb-14 flex flex-col items-start gap-4 sm:items-center sm:text-center">
+          <SectionLabel>Trust &amp; transparency</SectionLabel>
+          <SectionHeading
+            title="Finance you can verify"
+            subtitle="No simulated transactions. No fake hashes. Every payment is confirmed on Stellar before it appears in your records."
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {trustItems.map((t, i) => (
+            <TrustBadge
+              key={t.title}
+              icon={t.icon}
+              title={t.title}
+              description={t.description}
+              delay={i * 0.08}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* ── 7. Final CTA ───────────────────────────────────────────── */}
+      <section className="relative mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7 }}
+          className="relative overflow-hidden rounded-3xl border border-white/10"
+        >
+          <div className="absolute inset-0 brand-gradient opacity-90" />
+          <div className="absolute inset-0 bg-grid opacity-15" />
+          <motion.div
+            className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl"
+            animate={{ x: [0, 20, 0], y: [0, -15, 0] }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <div className="relative px-8 py-16 text-center sm:px-16 sm:py-20">
+            <h2 className="text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              Start your global savings circle
+            </h2>
+            <p className="mx-auto mt-4 max-w-lg text-base text-white/80 sm:text-lg">
+              Join communities building wealth together on Stellar. Free to start,
+              transparent by design, investor-ready from day one.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <PremiumButton href="/register" variant="glass" size="lg">
+                Create your free account <ArrowRight className="h-4 w-4" />
+              </PremiumButton>
+            </div>
+            <p className="mt-6 text-xs text-white/50">
+              Stellar Testnet · Non-custodial · Real on-chain transactions
+            </p>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ── Footer ─────────────────────────────────────────────────── */}
+      <footer className="border-t border-white/5">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-slate-500 sm:flex-row sm:px-6 lg:px-8">
           <Wordmark />
-          <p>© {new Date().getFullYear()} Pamodzi Finance. Built for communities saving together across borders.</p>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="live-dot relative flex h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
-            Stellar testnet
+          <p>
+            © {new Date().getFullYear()} Pamodzi Finance. Community wealth, moving on
+            Stellar.
+          </p>
+          <span className="inline-flex items-center gap-1.5 text-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+            </span>
+            Stellar Testnet
           </span>
         </div>
       </footer>
