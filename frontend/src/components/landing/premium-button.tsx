@@ -15,11 +15,11 @@ type PremiumButtonProps = {
 
 const variants = {
   primary:
-    "brand-gradient text-primary-foreground shadow-[0_0_40px_-8px_hsl(174_80%_50%/0.6)] hover:shadow-[0_0_50px_-6px_hsl(174_80%_50%/0.75)]",
+    "brand-gradient text-primary-foreground shadow-[0_0_40px_-8px_hsl(var(--primary)/0.45)] hover:shadow-[0_0_50px_-6px_hsl(var(--primary)/0.55)]",
   glass:
-    "border border-white/10 bg-white/5 text-white backdrop-blur-xl hover:bg-white/10 hover:border-white/20",
+    "border border-border/60 bg-card/50 text-foreground backdrop-blur-xl hover:bg-card/80 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:hover:border-white/20",
   outline:
-    "border border-white/15 bg-transparent text-slate-200 hover:bg-white/5 hover:border-cyan-400/30",
+    "border border-border bg-transparent text-foreground hover:bg-secondary/60 hover:border-primary/30 dark:border-white/15 dark:text-slate-200 dark:hover:bg-white/5 dark:hover:border-cyan-400/30",
 };
 
 const sizes = {

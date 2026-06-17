@@ -117,6 +117,14 @@
     scroll-behavior: smooth;
   }
 
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html:not(.dark) {
+    color-scheme: light;
+  }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
@@ -418,6 +426,55 @@
 
 .landing-glow-pulse {
   animation: glow-pulse 6s ease-in-out infinite;
+}
+
+/* Landing page — theme-aware surfaces (responds to .dark on <html>) */
+.landing-shell {
+  @apply bg-background text-foreground;
+}
+
+.landing-header {
+  @apply border-border/40 bg-background/70;
+}
+
+.landing-glass {
+  @apply border-border/50 bg-card/40 backdrop-blur-xl;
+}
+
+.landing-glass-strong {
+  @apply border-border/50 bg-card/60 backdrop-blur-2xl;
+}
+
+.dark .landing-glass {
+  @apply border-white/10 bg-white/[0.05];
+}
+
+.dark .landing-glass-strong {
+  @apply border-white/10 bg-white/[0.06];
+}
+
+.landing-accent-chip {
+  @apply border-primary/25 bg-primary/10 text-primary;
+}
+
+.dark .landing-accent-chip {
+  @apply border-cyan-400/20 bg-cyan-500/10 text-cyan-300;
+}
+
+.landing-stat-cell {
+  @apply bg-card/80;
+}
+
+.dark .landing-stat-cell {
+  @apply bg-[#020617]/80;
+}
+
+.landing-mesh-light {
+  opacity: 0.45;
+}
+
+.dark .landing-mesh-light {
+  opacity: 0.7;
 }
 
 /* =============================================================================

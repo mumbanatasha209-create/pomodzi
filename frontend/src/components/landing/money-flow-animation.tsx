@@ -48,9 +48,9 @@ const steps: FlowStep[] = [
 function Connector({ index }: { index: number }) {
   return (
     <div className="relative hidden flex-1 items-center lg:flex">
-      <div className="h-px w-full bg-gradient-to-r from-white/5 via-cyan-400/40 to-white/5" />
+      <div className="h-px w-full bg-gradient-to-r from-border via-primary/40 to-border dark:from-white/5 dark:via-cyan-400/40 dark:to-white/5" />
       <motion.div
-        className="absolute left-0 h-1 w-1 rounded-full bg-cyan-400 shadow-[0_0_10px_2px_hsl(174_80%_55%/0.8)]"
+        className="absolute left-0 h-1 w-1 rounded-full bg-primary shadow-[0_0_10px_2px_hsl(var(--primary)/0.6)] dark:bg-cyan-400 dark:shadow-[0_0_10px_2px_hsl(174_80%_55%/0.8)]"
         animate={{ left: ["0%", "100%"], opacity: [0, 1, 0] }}
         transition={{
           duration: 2.5,
@@ -59,7 +59,7 @@ function Connector({ index }: { index: number }) {
           ease: "easeInOut",
         }}
       />
-      <ArrowRight className="absolute right-0 h-4 w-4 text-cyan-400/50" />
+      <ArrowRight className="absolute right-0 h-4 w-4 text-primary/50 dark:text-cyan-400/50" />
     </div>
   );
 }
@@ -77,8 +77,9 @@ function FlowCard({ step, index }: { step: FlowStep; index: number }) {
     >
       <div
         className={cn(
-          "relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl",
-          "transition-all hover:border-cyan-400/25 hover:shadow-[0_20px_50px_-20px_hsl(174_80%_50%/0.3)]",
+          "landing-glass relative overflow-hidden rounded-2xl p-5",
+          "transition-all hover:border-primary/25 hover:shadow-[0_20px_50px_-20px_hsl(var(--primary)/0.2)]",
+          "dark:hover:border-cyan-400/25 dark:hover:shadow-[0_20px_50px_-20px_hsl(174_80%_50%/0.3)]",
         )}
       >
         <div
@@ -87,20 +88,19 @@ function FlowCard({ step, index }: { step: FlowStep; index: number }) {
             step.glow,
           )}
         />
-        <div className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 text-cyan-300">
+        <div className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 bg-secondary/50 text-primary dark:border-white/10 dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5 dark:text-cyan-300">
           <Icon className="h-5 w-5" />
         </div>
-        <h3 className="relative mt-4 font-semibold text-white">{step.title}</h3>
-        <p className="relative mt-1.5 text-sm text-slate-400">{step.subtitle}</p>
+        <h3 className="relative mt-4 font-semibold text-foreground">{step.title}</h3>
+        <p className="relative mt-1.5 text-sm text-muted-foreground">{step.subtitle}</p>
       </div>
-      {/* Mobile connector */}
       {index < steps.length - 1 && (
         <div className="flex justify-center py-3 lg:hidden">
           <motion.div
             animate={{ y: [0, 4, 0] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
-            <ArrowRight className="h-5 w-5 rotate-90 text-cyan-400/50" />
+            <ArrowRight className="h-5 w-5 rotate-90 text-primary/50 dark:text-cyan-400/50" />
           </motion.div>
         </div>
       )}

@@ -9,33 +9,40 @@ import { cn } from "@/lib/utils";
 export function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
   useEffect(() => setMounted(true), []);
 
   const isDark = resolvedTheme === "dark";
 
+  const toggle = () => {
+    setTheme(isDark ? "light" : "dark");
+  };
+
   return (
     <button
       type="button"
-      aria-label="Toggle theme"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-pressed={mounted ? isDark : undefined}
+      onClick={toggle}
       className={cn(
-        "relative flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 bg-secondary/40 text-muted-foreground transition-colors hover:text-foreground",
+        "relative flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 bg-secondary/40 text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground",
         className,
       )}
     >
       <AnimatePresence mode="wait" initial={false}>
         {mounted ? (
           <motion.span
-            key={isDark ? "moon" : "sun"}
+            key={isDark ? "dark" : "light"}
             initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
             animate={{ rotate: 0, opacity: 1, scale: 1 }}
             exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
             transition={{ duration: 0.2 }}
+            className="flex items-center justify-center"
           >
             {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </motion.span>
         ) : (
-          <span className="h-4 w-4" />
+          <Sun className="h-4 w-4 opacity-40" aria-hidden />
         )}
       </AnimatePresence>
     </button>

@@ -123,7 +123,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
       initial={{ opacity: 0, y: 8 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3.5 py-1.5 text-xs font-medium text-cyan-300"
+      className="landing-accent-chip inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium"
     >
       <Sparkles className="h-3.5 w-3.5" />
       {children}
@@ -148,10 +148,10 @@ function SectionHeading({
       transition={{ duration: 0.6 }}
       className={align === "center" ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}
     >
-      <h2 className="text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+      <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
         {title}
       </h2>
-      <p className="mt-4 text-pretty text-base leading-relaxed text-slate-400 sm:text-lg">
+      <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
         {subtitle}
       </p>
     </motion.div>
@@ -160,24 +160,24 @@ function SectionHeading({
 
 export default function LandingPage() {
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#020617] text-slate-200">
+    <div className="landing-shell relative min-h-screen overflow-x-hidden">
       <GlowBackground />
 
       {/* ── Navigation ─────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-[#020617]/70 backdrop-blur-2xl">
+      <header className="landing-header sticky top-0 z-50 border-b backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Wordmark />
-          <nav className="hidden items-center gap-8 text-sm text-slate-400 md:flex">
-            <a href="#flow" className="transition-colors hover:text-white">
+          <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
+            <a href="#flow" className="transition-colors hover:text-foreground">
               How it works
             </a>
-            <a href="#features" className="transition-colors hover:text-white">
+            <a href="#features" className="transition-colors hover:text-foreground">
               Features
             </a>
-            <a href="#global" className="transition-colors hover:text-white">
+            <a href="#global" className="transition-colors hover:text-foreground">
               Global
             </a>
-            <a href="#trust" className="transition-colors hover:text-white">
+            <a href="#trust" className="transition-colors hover:text-foreground">
               Trust
             </a>
           </nav>
@@ -185,7 +185,7 @@ export default function LandingPage() {
             <ThemeToggle />
             <Link
               href="/login"
-              className="hidden text-sm font-medium text-slate-300 transition-colors hover:text-white sm:block"
+              className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:block"
             >
               Log in
             </Link>
@@ -205,11 +205,11 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-slate-300 backdrop-blur-xl"
+              className="landing-glass mb-6 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium text-muted-foreground"
             >
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
               Powered by Stellar Testnet
             </motion.div>
@@ -218,7 +218,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.08 }}
-              className="text-balance text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl xl:text-[4.25rem]"
+              className="text-balance text-4xl font-bold leading-[1.08] tracking-tight text-foreground sm:text-5xl lg:text-6xl xl:text-[4.25rem]"
             >
               Community wealth,
               <br />
@@ -229,7 +229,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.16 }}
-              className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-slate-400 sm:text-lg"
+              className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg"
             >
               Create global savings circles, track contributions, and automate
               rotating payouts across borders.
@@ -253,16 +253,16 @@ export default function LandingPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.36 }}
-              className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500"
+              className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground"
             >
               <span className="inline-flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5 text-cyan-400" /> Non-custodial
+                <Lock className="h-3.5 w-3.5 text-primary" /> Non-custodial
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <BadgeCheck className="h-3.5 w-3.5 text-cyan-400" /> Real on-chain txs
+                <BadgeCheck className="h-3.5 w-3.5 text-primary" /> Real on-chain txs
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Globe2 className="h-3.5 w-3.5 text-cyan-400" /> Cross-border
+                <Globe2 className="h-3.5 w-3.5 text-primary" /> Cross-border
               </span>
             </motion.div>
           </div>
@@ -275,8 +275,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Stats strip ────────────────────────────────────────────── */}
-      <section className="relative border-y border-white/5 bg-white/[0.02] backdrop-blur-sm">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-px bg-white/5 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">
+      <section className="relative border-y border-border/40 bg-card/30 backdrop-blur-sm">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-px bg-border/30 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">
           {stats.map((s, i) => (
             <motion.div
               key={s.label}
@@ -284,16 +284,16 @@ export default function LandingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
-              className="bg-[#020617]/80 px-6 py-8 text-center sm:text-left"
+              className="landing-stat-cell px-6 py-8 text-center sm:text-left"
             >
-              <p className="tabular text-2xl font-bold text-white sm:text-3xl">
+              <p className="tabular text-2xl font-bold text-foreground sm:text-3xl">
                 <AnimatedCounter
                   value={s.value}
                   decimals={s.decimals ?? 0}
                   suffix={s.suffix}
                 />
               </p>
-              <p className="mt-1 text-sm text-slate-500">{s.label}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{s.label}</p>
             </motion.div>
           ))}
         </div>
@@ -316,15 +316,15 @@ export default function LandingPage() {
           transition={{ duration: 0.8 }}
           className="relative mx-auto max-w-5xl"
         >
-          <div className="absolute -inset-8 rounded-[2.5rem] bg-gradient-to-br from-cyan-500/15 via-transparent to-emerald-500/10 blur-3xl landing-glow-pulse" />
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl">
+          <div className="absolute -inset-8 rounded-[2.5rem] bg-gradient-to-br from-primary/15 via-transparent to-accent/10 blur-3xl landing-glow-pulse" />
+          <div className="landing-glass-strong relative overflow-hidden rounded-3xl">
             <div className="grid gap-0 lg:grid-cols-5">
               {/* Left panel — activity feed */}
-              <div className="border-b border-white/10 p-6 lg:col-span-2 lg:border-b-0 lg:border-r">
-                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              <div className="border-b border-border/50 p-6 lg:col-span-2 lg:border-b-0 lg:border-r dark:border-white/10">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Circle activity
                 </p>
-                <p className="mt-1 text-lg font-semibold text-white">Global Family Fund</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">Global Family Fund</p>
                 <div className="mt-6 space-y-3">
                   {[
                     { who: "Carol", action: "contributed 5 XLM", time: "2m ago", done: true },
@@ -338,20 +338,20 @@ export default function LandingPage() {
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: 0.3 + i * 0.1 }}
-                      className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2.5"
+                      className="flex items-center gap-3 rounded-xl border border-border/40 bg-secondary/30 px-3 py-2.5 dark:border-white/5 dark:bg-white/[0.03]"
                     >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/20 to-emerald-500/10 text-xs font-bold text-cyan-300">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 text-xs font-bold text-primary dark:text-cyan-300">
                         {item.who[0]}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-white">
+                        <p className="truncate text-sm text-foreground">
                           <span className="font-medium">{item.who}</span>{" "}
-                          <span className="text-slate-400">{item.action}</span>
+                          <span className="text-muted-foreground">{item.action}</span>
                         </p>
-                        <p className="text-[10px] text-slate-500">{item.time}</p>
+                        <p className="text-[10px] text-muted-foreground">{item.time}</p>
                       </div>
                       {item.done && (
-                        <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+                        <BadgeCheck className="h-4 w-4 shrink-0 text-[hsl(var(--success))]" />
                       )}
                     </motion.div>
                   ))}
@@ -361,20 +361,20 @@ export default function LandingPage() {
               {/* Right panel — metrics */}
               <div className="p-6 lg:col-span-3">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-cyan-500/10 to-transparent p-5">
-                    <p className="text-xs text-slate-500">Treasury Balance</p>
-                    <p className="tabular mt-1 text-3xl font-bold text-white">
+                  <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-primary/10 to-transparent p-5 dark:border-white/10">
+                    <p className="text-xs text-muted-foreground">Treasury Balance</p>
+                    <p className="tabular mt-1 text-3xl font-bold text-foreground">
                       <AnimatedCounter value={15000} suffix=" XLM" />
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                    <p className="text-xs text-slate-500">Contribution Progress</p>
-                    <p className="tabular mt-1 text-3xl font-bold text-white">
+                  <div className="rounded-2xl border border-border/50 bg-secondary/30 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                    <p className="text-xs text-muted-foreground">Contribution Progress</p>
+                    <p className="tabular mt-1 text-3xl font-bold text-foreground">
                       <AnimatedCounter value={3} suffix="/5" />
                     </p>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border/60 dark:bg-white/10">
                       <motion.div
-                        className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+                        className="h-full brand-gradient"
                         initial={{ width: 0 }}
                         whileInView={{ width: "60%" }}
                         viewport={{ once: true }}
@@ -382,18 +382,18 @@ export default function LandingPage() {
                       />
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                    <p className="text-xs text-slate-500">Next Payout Recipient</p>
-                    <p className="mt-1 text-xl font-semibold text-white">Alice</p>
-                    <p className="mt-0.5 text-sm text-emerald-400">15,000 XLM rotating</p>
+                  <div className="rounded-2xl border border-border/50 bg-secondary/30 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                    <p className="text-xs text-muted-foreground">Next Payout Recipient</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">Alice</p>
+                    <p className="mt-0.5 text-sm text-[hsl(var(--success))]">15,000 XLM rotating</p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                    <p className="text-xs text-slate-500">Stellar Network</p>
-                    <p className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-white">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <div className="rounded-2xl border border-border/50 bg-secondary/30 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+                    <p className="text-xs text-muted-foreground">Stellar Network</p>
+                    <p className="mt-1 inline-flex items-center gap-2 text-xl font-semibold text-foreground">
+                      <span className="h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
                       Online
                     </p>
-                    <p className="mt-0.5 font-mono text-[11px] text-cyan-300/70">
+                    <p className="mt-0.5 font-mono text-[11px] text-primary/80 dark:text-cyan-300/70">
                       0b96e7…9b9ffeb
                     </p>
                   </div>
@@ -403,7 +403,7 @@ export default function LandingPage() {
                   {["XLM", "USDC", "Testnet", "Real hashes"].map((chip) => (
                     <span
                       key={chip}
-                      className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-300"
+                      className="landing-glass rounded-lg px-2.5 py-1 text-xs font-medium text-muted-foreground"
                     >
                       {chip}
                     </span>
@@ -472,8 +472,8 @@ export default function LandingPage() {
                 "Country-aware registration and phone validation",
                 "Transparent records for every member",
               ].map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-sm text-slate-400">
-                  <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+                <li key={item} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                  <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   {item}
                 </li>
               ))}
@@ -530,7 +530,12 @@ export default function LandingPage() {
               transparent by design, investor-ready from day one.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <PremiumButton href="/register" variant="glass" size="lg">
+              <PremiumButton
+                href="/register"
+                variant="glass"
+                size="lg"
+                className="border-white/20 bg-white/15 text-white hover:border-white/30 hover:bg-white/25"
+              >
                 Create your free account <ArrowRight className="h-4 w-4" />
               </PremiumButton>
             </div>
@@ -542,8 +547,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ─────────────────────────────────────────────────── */}
-      <footer className="border-t border-white/5">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-slate-500 sm:flex-row sm:px-6 lg:px-8">
+      <footer className="border-t border-border/40">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:px-6 lg:px-8">
           <Wordmark />
           <p>
             © <span suppressHydrationWarning>{new Date().getFullYear()}</span> Pamodzi Finance. Community wealth, moving on
@@ -551,8 +556,8 @@ export default function LandingPage() {
           </p>
           <span className="inline-flex items-center gap-1.5 text-xs">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[hsl(var(--success))] opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
             </span>
             Stellar Testnet
           </span>

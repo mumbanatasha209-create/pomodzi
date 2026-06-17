@@ -39,8 +39,9 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
+          storageKey="pamodzi-theme"
           enableSystem={false}
-          disableTransitionOnChange
+          disableTransitionOnChange={false}
         >
           <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
