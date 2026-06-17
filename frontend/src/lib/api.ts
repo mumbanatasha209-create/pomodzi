@@ -86,7 +86,10 @@ export const api = {
     full_name: string;
     email: string;
     password: string;
+    confirm_password?: string;
     phone?: string;
+    phone_country_code?: string;
+    country?: string;
   }) => request<AuthResponse>("/api/auth/register", { method: "POST", body: input }),
 
   login: (input: { email: string; password: string }) =>
@@ -108,13 +111,16 @@ export const api = {
     description?: string;
     contribution_amount: string;
     currency?: string;
+    primary_country?: string;
+    settlement_asset?: string;
+    timezone?: string;
     frequency: "weekly" | "monthly";
   }) => request<SavingsGroup>("/api/groups", { method: "POST", body: input }),
   joinGroup: (input: { invite_code: string }) =>
     request<SavingsGroup>("/api/groups/join", { method: "POST", body: input }),
   addMember: (id: string, input: { email: string }) =>
     request<GroupMember>(`/api/groups/${id}/members`, { method: "POST", body: input }),
-  contribute: (id: string, input: { amount: string }) =>
+  contribute: (id: string, input: { amount: string; payment_provider?: string }) =>
     request<ContributeResponse>(`/api/groups/${id}/contribute`, { method: "POST", body: input }),
   updateRotation: (
     id: string,

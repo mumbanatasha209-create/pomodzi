@@ -18,6 +18,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { AreaTrend, makeSeries } from "@/components/ui/charts";
 import { EmptyState } from "@/components/shared/empty-state";
 import { api } from "@/lib/api";
+import { transactionLabel } from "@/lib/config/transaction-labels";
 import { formatAmount, formatDate } from "@/lib/utils";
 import type { Transaction, Wallet } from "@/lib/types";
 
@@ -56,9 +57,9 @@ export default function WalletPage() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Wallet</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Digital Wallet</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your Stellar testnet wallet — fund, contribute and receive payouts.
+            Stellar-powered wallet for cross-border contributions and rotating payouts.
           </p>
         </div>
 
@@ -75,7 +76,7 @@ export default function WalletPage() {
               <div className="relative flex items-start justify-between">
                 <div>
                   <p className="flex items-center gap-2 text-sm text-primary-foreground/80">
-                    <WalletIcon className="h-4 w-4" /> Available balance
+                    <WalletIcon className="h-4 w-4" /> XLM balance
                   </p>
                   {loading ? (
                     <Skeleton className="mt-2 h-10 w-56 bg-primary-foreground/20" />
@@ -116,23 +117,34 @@ export default function WalletPage() {
                   </div>
                 </div>
               ) : null}
+
+              <p className="relative mt-4 text-xs text-primary-foreground/75">
+                This wallet is currently using Stellar Testnet for demo transactions.
+              </p>
             </Card>
           </motion.div>
 
-          {/* Security / network card */}
+          {/* Balances + network */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.08 }}
+            transition={{ duration: 0.5, delay: 0.06 }}
+            className="space-y-4"
           >
-            <Card className="h-full p-5">
+            <Card className="p-5">
+              <p className="text-sm text-muted-foreground">USDC balance (demo)</p>
+              <p className="tabular mt-1 text-2xl font-bold">0.00 USDC</p>
+              <Badge variant="secondary" className="mt-2">
+                Placeholder — testnet demo
+              </Badge>
+            </Card>
+            <Card className="p-5">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--success)/0.14)] text-[hsl(var(--success))]">
                 <ShieldCheck className="h-5 w-5" />
               </div>
-              <p className="mt-3 font-semibold">Secured on Stellar</p>
+              <p className="mt-3 font-semibold">Stellar network</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Your funds settle on the Stellar network with ~5s finality and
-                negligible fees.
+                Network: Testnet · Explorer link available when funded.
               </p>
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
@@ -166,7 +178,7 @@ export default function WalletPage() {
         {/* Activity */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recent activity</CardTitle>
+            <CardTitle className="text-base">Recent Stellar activity</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {loading ? (
@@ -213,8 +225,8 @@ export default function WalletPage() {
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-medium capitalize">
-                          {t.tx_type.replace("_", " ")}
+                        <p className="text-sm font-medium">
+                          {transactionLabel(t.tx_type)}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {formatDate(t.created_at)}

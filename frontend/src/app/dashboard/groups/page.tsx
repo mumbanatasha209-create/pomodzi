@@ -58,7 +58,8 @@ export default function GroupsPage() {
               Savings circles
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your chamas &amp; stokvels — contribute, rotate, grow together.
+              Savings circles, chamas, stokvels, cooperatives, and community groups —
+              contribute, rotate, grow together.
             </p>
           </div>
           <Link href="/dashboard/groups/new">

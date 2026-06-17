@@ -11,7 +11,7 @@ use rand::rngs::OsRng;
 use rust_decimal::Decimal;
 use serde::Deserialize;
 
-pub use payments::PaymentResult;
+pub use payments::{public_from_secret, PaymentResult};
 
 #[derive(Debug, Clone)]
 pub struct StellarKeypair {
@@ -72,15 +72,35 @@ impl StellarClient {
         }
     }
 
-    pub async fn fund_with_friendbot(&self, public_key: &str) -> anyhow::Result<Option<String>> {
+    pub async fn fund_with_friendbot(&self, public_key: &str) -> anyhow::Result<String> {
         let url = format!("{}/?addr={}", self.friendbot_url, public_key);
-        let resp = self.http.get(url).send().await?;
-        if !resp.status().is_success() {
-            tracing::warn!("friendbot funding returned status {}", resp.status());
-            return Ok(None);
+        let mut last_status = None;
+        for attempt in 1..=5 {
+            let resp = self.http.get(&url).send().await?;
+            last_status = Some(resp.status());
+            if resp.status().is_success() {
+                let body: FriendbotResponse =
+                    resp.json().await.unwrap_or(FriendbotResponse { hash: None });
+                if let Some(hash) = body.hash {
+                    for _ in 0..10 {
+                        if self.fetch_account(public_key).await.is_ok() {
+                            return Ok(hash);
+                        }
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    }
+                    anyhow::bail!("friendbot funded {public_key} but account not visible on Horizon");
+                }
+            }
+            tracing::warn!(
+                "friendbot attempt {attempt} returned status {:?} for {public_key}",
+                last_status
+            );
+            tokio::time::sleep(std::time::Duration::from_secs(2 * attempt as u64)).await;
         }
-        let body: FriendbotResponse = resp.json().await.unwrap_or(FriendbotResponse { hash: None });
-        Ok(body.hash)
+        anyhow::bail!(
+            "friendbot could not fund {public_key} (last status: {:?})",
+            last_status
+        )
     }
 
     pub async fn get_native_balance(&self, public_key: &str) -> anyhow::Result<String> {
@@ -103,16 +123,18 @@ impl StellarClient {
     }
 
     /// Submit a native XLM payment on Stellar testnet and return the on-chain hash.
+    ///
+    /// Horizon `accounts` returns the account's current ledger sequence `N`;
+    /// the transaction must use sequence `N + 1`.
     pub async fn send_native_payment(
         &self,
         source_secret: &str,
         destination_public: &str,
         amount: &Decimal,
     ) -> anyhow::Result<PaymentResult> {
-        let account = self
-            .fetch_account(&payments::public_from_secret(source_secret)?)
-            .await?;
-        let sequence: i64 = account.sequence.parse()?;
+        let source_public = payments::public_from_secret(source_secret)?;
+        let account = self.fetch_account(&source_public).await?;
+        let current_sequence: i64 = account.sequence.parse()?;
         submit_native_payment(
             &self.http,
             &self.horizon_url,
@@ -120,7 +142,7 @@ impl StellarClient {
             source_secret,
             destination_public,
             amount,
-            sequence,
+            current_sequence,
         )
         .await
     }

@@ -4,6 +4,7 @@ pub mod crypto;
 pub mod db;
 pub mod error;
 pub mod handlers;
+pub mod international;
 pub mod middleware;
 pub mod models;
 pub mod routes;

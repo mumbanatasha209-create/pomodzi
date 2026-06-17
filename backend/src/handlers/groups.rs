@@ -1,10 +1,14 @@
 use crate::{
     auth::AuthUser,
     error::{AppError, AppResult},
-    handlers::{encrypt_secret, generate_invite_code, notify, write_audit},
+    handlers::{encrypt_secret, generate_invite_code, get_user, notify, write_audit},
+    international::{
+        default_timezone_for_country, validate_country, validate_currency,
+        validate_settlement_asset,
+    },
     models::{
         AddMemberRequest, CreateGroupRequest, GroupMember, JoinGroupRequest, MemberView,
-        SavingsGroup, SetRotationRequest, User, parse_money,
+        SavingsGroup, SetRotationRequest, User, GROUP_COLUMNS, GROUP_SELECT, USER_COLUMNS, parse_money,
     },
     state::AppState,
     stellar::StellarClient,
@@ -17,11 +21,6 @@ use rust_decimal::Decimal;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use uuid::Uuid;
-
-const GROUP_SELECT: &str = r#"SELECT id, name, description, admin_id, contribution_amount, currency,
-       frequency::text AS frequency, current_cycle, status::text AS status,
-       invite_code, treasury_public_key, treasury_secret_key, created_at, updated_at
-       FROM savings_groups"#;
 
 pub async fn is_active_member(db: &PgPool, group_id: Uuid, user_id: Uuid) -> AppResult<bool> {
     let count = sqlx::query_scalar::<_, i64>(
@@ -85,29 +84,62 @@ pub async fn create_group(
         ));
     }
 
+    let primary_country = payload
+        .primary_country
+        .as_deref()
+        .map(validate_country)
+        .transpose()?;
+    let currency = validate_currency(
+        payload
+            .currency
+            .as_deref()
+            .unwrap_or("XLM"),
+    )?;
+    let settlement_asset = validate_settlement_asset(
+        payload
+            .settlement_asset
+            .as_deref()
+            .unwrap_or("XLM"),
+    )?;
+    let timezone = payload
+        .timezone
+        .as_deref()
+        .map(|t| t.to_string())
+        .or_else(|| {
+            primary_country
+                .as_deref()
+                .map(default_timezone_for_country)
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "UTC".to_string());
+
     let treasury = StellarClient::generate_keypair();
     let encrypted_treasury_secret = encrypt_secret(&state.crypto, &treasury.secret_key)?;
     let invite_code = generate_invite_code();
 
-    let group = sqlx::query_as::<_, SavingsGroup>(
+    let insert = format!(
         r#"INSERT INTO savings_groups
-              (name, description, admin_id, contribution_amount, frequency, invite_code,
-               treasury_public_key, treasury_secret_key)
-           VALUES ($1, $2, $3, $4, $5::contribution_frequency, $6, $7, $8)
-           RETURNING id, name, description, admin_id, contribution_amount, currency,
-                     frequency::text AS frequency, current_cycle, status::text AS status,
-                     invite_code, treasury_public_key, treasury_secret_key, created_at, updated_at"#,
-    )
-    .bind(payload.name.trim())
-    .bind(payload.description.as_deref())
-    .bind(auth.user_id)
-    .bind(contribution_amount)
-    .bind(&payload.frequency)
-    .bind(&invite_code)
-    .bind(&treasury.public_key)
-    .bind(&encrypted_treasury_secret)
-    .fetch_one(&state.db)
-    .await?;
+              (name, description, admin_id, contribution_amount, currency, frequency, invite_code,
+               treasury_public_key, treasury_secret_key, primary_country, settlement_asset, timezone)
+           VALUES ($1, $2, $3, $4, $5, $6::contribution_frequency, $7, $8, $9, $10, $11, $12)
+           RETURNING {GROUP_COLUMNS}"#
+    );
+
+    let group = sqlx::query_as::<_, SavingsGroup>(&insert)
+        .bind(payload.name.trim())
+        .bind(payload.description.as_deref())
+        .bind(auth.user_id)
+        .bind(contribution_amount)
+        .bind(&currency)
+        .bind(&payload.frequency)
+        .bind(&invite_code)
+        .bind(&treasury.public_key)
+        .bind(&encrypted_treasury_secret)
+        .bind(primary_country.as_deref())
+        .bind(&settlement_asset)
+        .bind(&timezone)
+        .fetch_one(&state.db)
+        .await?;
 
     if let Err(e) = state.stellar.fund_with_friendbot(&treasury.public_key).await {
         tracing::warn!("treasury friendbot funding failed: {e}");
@@ -149,6 +181,7 @@ pub async fn list_my_groups(
         r#"SELECT g.id, g.name, g.description, g.admin_id, g.contribution_amount, g.currency,
                   g.frequency::text AS frequency, g.current_cycle, g.status::text AS status,
                   g.invite_code, g.treasury_public_key, g.treasury_secret_key,
+                  g.primary_country, g.settlement_asset, g.timezone,
                   g.created_at, g.updated_at
            FROM savings_groups g
            JOIN group_members gm ON gm.group_id = g.id
@@ -213,12 +246,9 @@ pub async fn join_group(
     auth: AuthUser,
     Json(payload): Json<JoinGroupRequest>,
 ) -> AppResult<Json<SavingsGroup>> {
-    let group = sqlx::query_as::<_, SavingsGroup>(
-        r#"SELECT id, name, description, admin_id, contribution_amount, currency,
-                  frequency::text AS frequency, current_cycle, status::text AS status,
-                  invite_code, treasury_public_key, treasury_secret_key, created_at, updated_at
-           FROM savings_groups WHERE invite_code = $1"#,
-    )
+    let group = sqlx::query_as::<_, SavingsGroup>(&format!(
+        "{GROUP_SELECT} WHERE invite_code = $1"
+    ))
     .bind(payload.invite_code.trim().to_uppercase())
     .fetch_optional(&state.db)
     .await?
@@ -228,15 +258,33 @@ pub async fn join_group(
         return Err(AppError::Conflict("You are already a member".into()));
     }
 
+    let joiner = get_user(&state.db, auth.user_id).await?;
     add_member_internal(&state.db, group.id, auth.user_id).await?;
 
-    notify(
-        &state.db,
-        group.admin_id,
-        "New member joined",
-        &format!("{} joined your group \"{}\".", auth.email, group.name),
-    )
-    .await;
+    let cross_border = joiner
+        .as_ref()
+        .and_then(|u| u.country.as_deref())
+        .zip(group.primary_country.as_deref())
+        .map(|(a, b)| a != b)
+        .unwrap_or(false);
+
+    if cross_border {
+        notify(
+            &state.db,
+            group.admin_id,
+            "Cross-border member",
+            "A member from another country joined your savings circle.",
+        )
+        .await;
+    } else {
+        notify(
+            &state.db,
+            group.admin_id,
+            "New member",
+            &format!("{} joined your savings circle \"{}\".", auth.email, group.name),
+        )
+        .await;
+    }
 
     write_audit(
         &state.db,
@@ -263,11 +311,8 @@ pub async fn add_member(
         return Err(AppError::Forbidden);
     }
 
-    let target = sqlx::query_as::<_, User>(
-        r#"SELECT id, full_name, email, phone, password_hash, role::text AS role,
-                  stellar_public_key, stellar_secret_key, created_at, updated_at
-           FROM users WHERE email = $1"#,
-    )
+    let query = format!("SELECT {USER_COLUMNS} FROM users WHERE email = $1");
+    let target = sqlx::query_as::<_, User>(&query)
     .bind(payload.email.trim().to_lowercase())
     .fetch_optional(&state.db)
     .await?
@@ -282,8 +327,8 @@ pub async fn add_member(
     notify(
         &state.db,
         target.id,
-        "Added to a savings group",
-        &format!("You were added to \"{}\".", group.name),
+        "Added to savings circle",
+        &format!("You were added to the savings circle \"{}\".", group.name),
     )
     .await;
 

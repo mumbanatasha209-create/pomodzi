@@ -10,7 +10,7 @@ pub mod users;
 use crate::{
     crypto::KeyEncryption,
     error::{AppError, AppResult},
-    models::User,
+    models::{User, USER_COLUMNS},
 };
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -59,14 +59,11 @@ pub async fn notify(db: &PgPool, user_id: Uuid, title: &str, message: &str) {
 }
 
 pub async fn get_user(db: &PgPool, id: Uuid) -> AppResult<Option<User>> {
-    let user = sqlx::query_as::<_, User>(
-        r#"SELECT id, full_name, email, phone, password_hash, role::text AS role,
-                  stellar_public_key, stellar_secret_key, created_at, updated_at
-           FROM users WHERE id = $1"#,
-    )
-    .bind(id)
-    .fetch_optional(db)
-    .await?;
+    let query = format!("SELECT {USER_COLUMNS} FROM users WHERE id = $1");
+    let user = sqlx::query_as::<_, User>(&query)
+        .bind(id)
+        .fetch_optional(db)
+        .await?;
     Ok(user)
 }
 

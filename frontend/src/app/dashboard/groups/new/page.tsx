@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CalendarDays, CalendarRange, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -10,34 +10,58 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cn, formatAmount, parseMoneyInput } from "@/lib/utils";
+import { COUNTRIES } from "@/lib/config/countries";
+import { PRIMARY_CURRENCIES, SETTLEMENT_ASSETS } from "@/lib/config/currencies";
 import { useAuth } from "@/context/auth-context";
 import { api, ApiError } from "@/lib/api";
 import type { ContributionFrequency } from "@/lib/types";
 
 export default function NewGroupPage() {
   const router = useRouter();
-  const { refresh } = useAuth();
+  const { user, refresh } = useAuth();
+  const defaultCountry = user?.country ?? "GLOBAL";
+  const countryConfig = useMemo(
+    () => COUNTRIES.find((c) => c.code === defaultCountry) ?? COUNTRIES[0],
+    [defaultCountry],
+  );
+
   const [form, setForm] = useState({
     name: "",
     description: "",
+    primary_country: defaultCountry,
+    currency: countryConfig.defaultCurrency,
+    settlement_asset: "XLM",
     contribution_amount: "",
-    currency: "XLM",
     frequency: "monthly" as ContributionFrequency,
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function onCountryChange(code: string) {
+    const c = COUNTRIES.find((x) => x.code === code);
+    setForm((f) => ({
+      ...f,
+      primary_country: code,
+      currency: c?.defaultCurrency ?? "XLM",
+    }));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
+      const country = COUNTRIES.find((c) => c.code === form.primary_country);
       const group = await api.createGroup({
         name: form.name,
         description: form.description || undefined,
         contribution_amount: parseMoneyInput(form.contribution_amount),
         currency: form.currency,
+        primary_country: form.primary_country,
+        settlement_asset: form.settlement_asset,
+        timezone: country?.timezone,
         frequency: form.frequency,
       });
       await refresh();
@@ -65,8 +89,7 @@ export default function NewGroupPage() {
             Create a savings circle
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Set the terms — members contribute each cycle and payouts rotate
-            automatically.
+            Set terms for your community savings and rotating payout group.
           </p>
         </div>
 
@@ -74,10 +97,10 @@ export default function NewGroupPage() {
           <CardContent className="p-5 sm:p-6">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
-                <Label htmlFor="name">Circle name</Label>
+                <Label htmlFor="name">Group name</Label>
                 <Input
                   id="name"
-                  placeholder="e.g. Lusaka Builders Chama"
+                  placeholder="e.g. Nairobi Tech Circle"
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   required
@@ -85,7 +108,7 @@ export default function NewGroupPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Group description</Label>
                 <Input
                   id="description"
                   placeholder="What is this circle saving for?"
@@ -96,9 +119,46 @@ export default function NewGroupPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="amount">Contribution</Label>
+                  <Label htmlFor="primary_country">Primary country</Label>
+                  <select
+                    id="primary_country"
+                    value={form.primary_country}
+                    onChange={(e) => onCountryChange(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    required
+                  >
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="currency">Primary currency</Label>
+                  <select
+                    id="currency"
+                    value={form.currency}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, currency: e.target.value }))
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    required
+                  >
+                    {PRIMARY_CURRENCIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="amount">Contribution amount</Label>
                   <Input
                     id="amount"
                     type="number"
@@ -117,19 +177,26 @@ export default function NewGroupPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="currency">Currency</Label>
-                  <Input
-                    id="currency"
-                    value={form.currency}
+                  <Label htmlFor="settlement_asset">Settlement asset</Label>
+                  <select
+                    id="settlement_asset"
+                    value={form.settlement_asset}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, currency: e.target.value }))
+                      setForm((f) => ({ ...f, settlement_asset: e.target.value }))
                     }
-                  />
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    {SETTLEMENT_ASSETS.map((a) => (
+                      <option key={a.value} value={a.value}>
+                        {a.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label>Frequency</Label>
+                <Label>Contribution frequency</Label>
                 <div className="grid grid-cols-2 gap-3">
                   {(
                     [
@@ -170,7 +237,16 @@ export default function NewGroupPage() {
                 </div>
               </div>
 
-              {/* Live preview */}
+              <div className="rounded-xl border border-border/60 bg-secondary/30 p-4 text-sm">
+                <p className="font-medium">Payout rotation order</p>
+                <p className="mt-1 text-muted-foreground">
+                  Members are added in join order. Set rotation order after members join.
+                </p>
+                <Badge variant="chain" className="mt-2">
+                  Stellar testnet settlement
+                </Badge>
+              </div>
+
               <motion.div
                 layout
                 className="rounded-xl border border-border/60 bg-secondary/30 p-4"
@@ -209,7 +285,7 @@ export default function NewGroupPage() {
                     <Loader2 className="h-4 w-4 animate-spin" /> Creating…
                   </>
                 ) : (
-                  "Create circle"
+                  "Create savings circle"
                 )}
               </Button>
             </form>

@@ -5,7 +5,14 @@ export type ContributionFrequency = "weekly" | "monthly";
 export type GroupStatus = "active" | "completed" | "paused";
 export type ContributionStatus = "pending" | "paid";
 export type PayoutStatus = "pending" | "completed" | "failed";
-export type TxType = "wallet_funding" | "contribution" | "payout" | "transfer";
+export type TxType =
+  | "wallet_funding"
+  | "contribution"
+  | "payout"
+  | "transfer"
+  | "treasury_deposit"
+  | "cross_border_contribution"
+  | "settlement_transfer";
 export type TxSource =
   | "stellar_testnet"
   | "internal_ledger"
@@ -22,8 +29,11 @@ export interface User {
   phone?: string | null;
   role: UserRole;
   stellar_public_key?: string | null;
+  country?: string | null;
+  preferred_currency?: string;
+  timezone?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface SavingsGroup {
@@ -37,6 +47,9 @@ export interface SavingsGroup {
   current_cycle: number;
   status: GroupStatus;
   invite_code: string;
+  primary_country?: string | null;
+  settlement_asset?: string;
+  timezone?: string;
   created_at: string;
   updated_at: string;
   member_count?: number;
@@ -97,6 +110,10 @@ export interface Contribution {
   transaction_source?: TxSource;
   paid_at?: string | null;
   created_at: string;
+  original_currency?: string | null;
+  settlement_currency?: string | null;
+  payment_provider?: string | null;
+  payment_country?: string | null;
   full_name?: string;
 }
 
@@ -111,6 +128,10 @@ export interface Payout {
   transaction_source?: TxSource;
   paid_at?: string | null;
   created_at: string;
+  payout_country?: string | null;
+  payout_provider?: string | null;
+  original_currency?: string | null;
+  settlement_currency?: string | null;
   recipient_name?: string;
 }
 
@@ -155,17 +176,38 @@ export interface Wallet {
   explorer_url: string;
 }
 
+export interface CountryStat {
+  country: string | null;
+  count: number;
+}
+
+export interface CurrencyVolume {
+  currency: string;
+  volume: string;
+}
+
+export interface ProviderUsage {
+  provider: string | null;
+  count: number;
+}
+
 export interface AdminStats {
   users: number;
   groups: number;
   active_groups: number;
+  active_savings_circles?: number;
   contributions_paid: number;
   payouts_completed: number;
   transactions: number;
+  users_by_country?: CountryStat[];
+  volume_by_currency?: CurrencyVolume[];
+  stellar_success_rate?: number;
+  payment_provider_usage?: ProviderUsage[];
+  cross_border_groups?: number;
+  suspicious_activity?: number;
 }
 
 export interface AuthResponse {
   token: string;
   user: User;
 }
-

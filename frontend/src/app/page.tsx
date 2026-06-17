@@ -29,32 +29,37 @@ const features = [
   {
     icon: Users,
     title: "Savings circles",
-    desc: "Spin up a chama or stokvel, invite members and save toward a shared goal — together.",
+    desc: "Create savings circles, chamas, stokvels, cooperatives, and community groups with shared goals.",
   },
   {
     icon: Wallet,
-    title: "On-chain wallets",
-    desc: "Every member gets a Stellar wallet to fund, contribute and receive payouts instantly.",
+    title: "Digital wallets",
+    desc: "Every member gets a Stellar digital wallet to fund, contribute, and receive payouts across borders.",
   },
   {
     icon: Repeat,
-    title: "Automated payouts",
-    desc: "Rotating payouts run on schedule, so every member gets their turn — transparently.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Trust & audit",
-    desc: "Immutable transaction history and audit logs keep every group fully accountable.",
-  },
-  {
-    icon: LineChart,
-    title: "Live insights",
-    desc: "Track contributions, growth and group health with a real financial dashboard.",
+    title: "Stellar-powered payouts",
+    desc: "Automate rotating payouts on Stellar testnet with transparent settlement and near-instant finality.",
   },
   {
     icon: Globe2,
-    title: "Built for Africa",
-    desc: "Mobile-first, low-fee and borderless — designed for how communities actually save.",
+    title: "Cross-border contributions",
+    desc: "Members in different countries can contribute to the same circle with clear treasury records.",
+  },
+  {
+    icon: Coins,
+    title: "Multi-currency readiness",
+    desc: "Set primary currency per circle — USD, XLM, USDC, EUR, ZAR, KES, NGN, ZMW, and more.",
+  },
+  {
+    icon: LineChart,
+    title: "Transparent group records",
+    desc: "Track contributions, treasury activity, and payout history with immutable on-chain references.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Trust and audit logs",
+    desc: "Platform audit logs and transaction history keep every group accountable and review-ready.",
   },
 ];
 
@@ -122,20 +127,19 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.05 }}
             className="text-balance text-4xl font-bold tracking-tight sm:text-6xl"
           >
-            Community savings,
+            Save together.
             <br />
-            <span className="text-gradient">reimagined on-chain</span>
+            <span className="text-gradient">Grow across borders.</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.12 }}
-            className="mx-auto mt-5 max-w-xl text-pretty text-base text-muted-foreground sm:text-lg"
+            className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg"
           >
-            Pamodzi brings the trusted tradition of chamas and stokvels on-chain —
-            transparent contributions, automated rotating payouts and digital
-            wallets built for Africa.
+            Pamodzi Finance helps communities create savings circles, track contributions,
+            manage group treasuries, and automate rotating payouts using Stellar.
           </motion.p>
 
           <motion.div
@@ -358,7 +362,7 @@ export default function LandingPage() {
       <footer className="border-t border-border/60">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:px-6">
           <Wordmark />
-          <p>© {new Date().getFullYear()} Pamodzi Finance. Built for African communities.</p>
+          <p>© {new Date().getFullYear()} Pamodzi Finance. Built for communities saving together across borders.</p>
           <span className="inline-flex items-center gap-1.5">
             <span className="live-dot relative flex h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
             Stellar testnet

@@ -2,9 +2,9 @@ use crate::{
     auth::AuthUser,
     error::{AppError, AppResult},
     handlers::{
-        get_group_treasury_secret, groups::is_active_member, notify, write_audit,
+        get_group_treasury_secret, get_user, groups::is_active_member, notify, write_audit,
     },
-    models::{Payout, SavingsGroup},
+    models::{Payout, SavingsGroup, PAYOUT_COLUMNS},
     state::AppState,
 };
 use axum::{
@@ -86,19 +86,30 @@ pub async fn process_payout_in_tx(
         ));
     }
 
-    let payout = sqlx::query_as::<_, Payout>(
+    let recipient_user = get_user(&state.db, recipient_id).await?;
+    let payout_country = recipient_user
+        .as_ref()
+        .and_then(|u| u.country.clone())
+        .or_else(|| group.primary_country.clone());
+
+    let insert = format!(
         r#"INSERT INTO payouts (group_id, cycle, recipient_id, amount, status, blockchain_hash,
-           transaction_source, paid_at)
-           VALUES ($1, $2, $3, $4, 'completed', $5, 'stellar_testnet', now())
-           RETURNING id, group_id, cycle, recipient_id, amount, status::text AS status,
-                     blockchain_hash, transaction_source::text AS transaction_source,
-                     paid_at, created_at"#,
-    )
+           transaction_source, paid_at, payout_country, payout_provider, original_currency,
+           settlement_currency)
+           VALUES ($1, $2, $3, $4, 'completed', $5, 'stellar_testnet', now(), $6, 'stellar_wallet',
+                   $7, $8)
+           RETURNING {PAYOUT_COLUMNS}"#
+    );
+
+    let payout = sqlx::query_as::<_, Payout>(&insert)
     .bind(group.id)
     .bind(cycle)
     .bind(recipient_id)
     .bind(&amount)
     .bind(&payment.hash)
+    .bind(payout_country.as_deref())
+    .bind(&group.currency)
+    .bind(&group.settlement_asset)
     .fetch_one(&mut **tx)
     .await
     .map_err(|e| match e {
@@ -117,15 +128,16 @@ pub async fn process_payout_in_tx(
     .await?;
 
     sqlx::query(
-        r#"INSERT INTO transactions (user_id, group_id, tx_type, amount, status, blockchain_hash,
+        r#"INSERT INTO transactions (user_id, group_id, tx_type, amount, currency, status, blockchain_hash,
            transaction_source, memo)
-           VALUES ($1, $2, 'payout', $3, 'success', $4, 'stellar_testnet', $5)"#,
+           VALUES ($1, $2, 'payout'::tx_type, $3, $4, 'success', $5, 'stellar_testnet', $6)"#,
     )
     .bind(recipient_id)
     .bind(group.id)
     .bind(&amount)
+    .bind(&group.currency)
     .bind(&payment.hash)
-    .bind(format!("Payout from {} (cycle {})", group.name, cycle))
+    .bind(format!("Rotating Payout from {} (cycle {})", group.name, cycle))
     .execute(&mut **tx)
     .await?;
 
@@ -170,11 +182,8 @@ pub async fn process_payout_in_tx(
     notify(
         &state.db,
         recipient_id,
-        "You received a payout!",
-        &format!(
-            "You received {} {} from \"{}\".",
-            amount, group.currency, group.name
-        ),
+        "Payout received",
+        "You received a payout.",
     )
     .await;
 
@@ -189,11 +198,8 @@ pub async fn process_payout_in_tx(
         notify(
             &state.db,
             uid,
-            "Cycle payout processed",
-            &format!(
-                "Cycle {} payout for \"{}\" was sent. Next cycle has begun.",
-                cycle, group.name
-            ),
+            "Rotating payout completed",
+            "Rotating payout completed.",
         )
         .await;
     }
@@ -212,10 +218,7 @@ pub async fn list_payouts(
     }
 
     let rows = sqlx::query_as::<_, Payout>(
-        r#"SELECT id, group_id, cycle, recipient_id, amount, status::text AS status,
-                  blockchain_hash, transaction_source::text AS transaction_source,
-                  paid_at, created_at
-           FROM payouts WHERE group_id = $1 ORDER BY cycle DESC"#,
+        &format!("SELECT {PAYOUT_COLUMNS} FROM payouts WHERE group_id = $1 ORDER BY cycle DESC"),
     )
     .bind(group_id)
     .fetch_all(&state.db)

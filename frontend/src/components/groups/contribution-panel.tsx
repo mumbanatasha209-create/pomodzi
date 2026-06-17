@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { api, ApiError } from "@/lib/api";
+import { providersForCountry } from "@/lib/config/payment-providers";
+import { getCountry } from "@/lib/config/countries";
 import { formatAmount, formatDate, parseMoneyInput } from "@/lib/utils";
 import type { Contribution, ContributeResponse, SavingsGroup } from "@/lib/types";
 
@@ -22,9 +24,12 @@ export function ContributionPanel({
 }) {
   const requiredAmount = String(group.contribution_amount);
   const [amount, setAmount] = useState(requiredAmount);
+  const [paymentProvider, setPaymentProvider] = useState("stellar_wallet");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ContributeResponse | null>(null);
+
+  const providers = providersForCountry(group.primary_country ?? "GLOBAL");
 
   async function handleContribute(e: React.FormEvent) {
     e.preventDefault();
@@ -36,7 +41,10 @@ export function ContributionPanel({
       if (parsed !== parseMoneyInput(requiredAmount)) {
         throw new Error("Contribution amount must match the required group amount.");
       }
-      const res = await api.contribute(group.id, { amount: parsed });
+      const res = await api.contribute(group.id, {
+        amount: parsed,
+        payment_provider: paymentProvider,
+      });
       setResult(res);
       onContributed?.();
       setTimeout(() => setResult(null), 6000);
@@ -72,6 +80,33 @@ export function ContributionPanel({
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
             {group.currency}
           </span>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Payment method</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {providers.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPaymentProvider(p.id)}
+                className={
+                  "rounded-lg border px-3 py-2 text-left text-sm transition-colors " +
+                  (paymentProvider === p.id
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:bg-secondary/50")
+                }
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {group.primary_country ? (
+            <p className="text-xs text-muted-foreground">
+              Options for {getCountry(group.primary_country)?.name ?? group.primary_country}
+              — Stellar Wallet always available.
+            </p>
+          ) : null}
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}

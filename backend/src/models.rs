@@ -4,6 +4,33 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+pub const USER_COLUMNS: &str = r#"id, full_name, email, phone, password_hash, role::text AS role,
+    stellar_public_key, stellar_secret_key, country, phone_country_code,
+    preferred_currency, timezone, created_at, updated_at"#;
+
+pub const GROUP_COLUMNS: &str = r#"id, name, description, admin_id, contribution_amount, currency,
+    frequency::text AS frequency, current_cycle, status::text AS status,
+    invite_code, treasury_public_key, treasury_secret_key,
+    primary_country, settlement_asset, timezone, created_at, updated_at"#;
+
+pub const GROUP_SELECT: &str = concat!(
+    "SELECT ",
+    "id, name, description, admin_id, contribution_amount, currency, \
+    frequency::text AS frequency, current_cycle, status::text AS status, \
+    invite_code, treasury_public_key, treasury_secret_key, \
+    primary_country, settlement_asset, timezone, created_at, updated_at",
+    " FROM savings_groups"
+);
+
+pub const GROUP_SELECT_BY_ID: &str = concat!(
+    "SELECT ",
+    "id, name, description, admin_id, contribution_amount, currency, \
+    frequency::text AS frequency, current_cycle, status::text AS status, \
+    invite_code, treasury_public_key, treasury_secret_key, \
+    primary_country, settlement_asset, timezone, created_at, updated_at",
+    " FROM savings_groups WHERE id = $1"
+);
+
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct User {
     pub id: Uuid,
@@ -16,6 +43,10 @@ pub struct User {
     pub stellar_public_key: Option<String>,
     #[serde(skip_serializing)]
     pub stellar_secret_key: Option<String>,
+    pub country: Option<String>,
+    pub phone_country_code: Option<String>,
+    pub preferred_currency: String,
+    pub timezone: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -28,6 +59,9 @@ pub struct UserPublic {
     pub phone: Option<String>,
     pub role: String,
     pub stellar_public_key: Option<String>,
+    pub country: Option<String>,
+    pub preferred_currency: String,
+    pub timezone: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -40,6 +74,9 @@ impl From<User> for UserPublic {
             phone: u.phone,
             role: u.role,
             stellar_public_key: u.stellar_public_key,
+            country: u.country,
+            preferred_currency: u.preferred_currency,
+            timezone: u.timezone,
             created_at: u.created_at,
         }
     }
@@ -60,6 +97,9 @@ pub struct SavingsGroup {
     pub treasury_public_key: Option<String>,
     #[serde(skip_serializing)]
     pub treasury_secret_key: Option<String>,
+    pub primary_country: Option<String>,
+    pub settlement_asset: String,
+    pub timezone: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -86,6 +126,10 @@ pub struct MemberView {
     pub contribution_status: String,
 }
 
+pub const CONTRIBUTION_COLUMNS: &str = r#"id, group_id, user_id, cycle, amount, status::text AS status,
+    blockchain_hash, transaction_source::text AS transaction_source, paid_at, created_at,
+    original_currency, settlement_currency, exchange_rate_used, payment_provider, payment_country"#;
+
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct Contribution {
     pub id: Uuid,
@@ -98,7 +142,16 @@ pub struct Contribution {
     pub transaction_source: String,
     pub paid_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    pub original_currency: Option<String>,
+    pub settlement_currency: Option<String>,
+    pub exchange_rate_used: Option<Decimal>,
+    pub payment_provider: Option<String>,
+    pub payment_country: Option<String>,
 }
+
+pub const PAYOUT_COLUMNS: &str = r#"id, group_id, cycle, recipient_id, amount, status::text AS status,
+    blockchain_hash, transaction_source::text AS transaction_source, paid_at, created_at,
+    payout_country, payout_provider, original_currency, settlement_currency"#;
 
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct Payout {
@@ -112,6 +165,10 @@ pub struct Payout {
     pub transaction_source: String,
     pub paid_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    pub payout_country: Option<String>,
+    pub payout_provider: Option<String>,
+    pub original_currency: Option<String>,
+    pub settlement_currency: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]
@@ -155,7 +212,11 @@ pub struct RegisterRequest {
     pub full_name: String,
     pub email: String,
     pub phone: Option<String>,
+    pub phone_country_code: Option<String>,
+    pub country: Option<String>,
     pub password: String,
+    #[serde(default)]
+    pub confirm_password: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -177,6 +238,14 @@ pub struct CreateGroupRequest {
     /// Money amount as a decimal string, e.g. "10.50"
     pub contribution_amount: String,
     pub frequency: String,
+    #[serde(default)]
+    pub primary_country: Option<String>,
+    #[serde(default)]
+    pub currency: Option<String>,
+    #[serde(default)]
+    pub settlement_asset: Option<String>,
+    #[serde(default)]
+    pub timezone: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -204,6 +273,8 @@ pub struct SetRotationRequest {
 pub struct ContributeRequest {
     /// Required decimal string matching the group's contribution_amount exactly.
     pub amount: String,
+    #[serde(default)]
+    pub payment_provider: Option<String>,
 }
 
 pub fn parse_money(input: &str) -> Result<Decimal, String> {

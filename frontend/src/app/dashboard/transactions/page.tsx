@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { api } from "@/lib/api";
+import { transactionLabel } from "@/lib/config/transaction-labels";
 import { cn, formatAmount, formatDate, stellarExplorerTxUrl } from "@/lib/utils";
 import type { Transaction, TxStatus, TxType } from "@/lib/types";
 
@@ -18,17 +19,18 @@ const statusVariant: Record<TxStatus, "success" | "warning" | "destructive"> = {
   failed: "destructive",
 };
 
-const filters: { id: "all" | TxType; label: string }[] = [
+const filters: { id: "all" | TxType | "cross_border_contribution"; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "contribution", label: "Contributions" },
-  { id: "payout", label: "Payouts" },
-  { id: "wallet_funding", label: "Funding" },
+  { id: "wallet_funding", label: "Wallet Funding" },
+  { id: "contribution", label: "Group Contribution" },
+  { id: "cross_border_contribution", label: "Cross-Border" },
+  { id: "payout", label: "Rotating Payout" },
 ];
 
 export default function TransactionsPage() {
   const [txns, setTxns] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [active, setActive] = useState<"all" | TxType>("all");
+  const [active, setActive] = useState<"all" | TxType | "cross_border_contribution">("all");
 
   useEffect(() => {
     api
@@ -167,7 +169,7 @@ export default function TransactionsPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium capitalize">
-                          {t.tx_type.replace("_", " ")}
+                          {transactionLabel(t.tx_type)}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
                           {formatDate(t.created_at)}

@@ -33,9 +33,9 @@ export default function LoginPage() {
   return (
     <AuthShell>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Log in to your Pamodzi account</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Log in to your savings dashboard.
+          Manage your savings circles, wallet, and payouts.
         </p>
       </div>
 

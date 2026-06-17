@@ -21,7 +21,10 @@ interface AuthContextValue {
     full_name: string;
     email: string;
     password: string;
+    confirm_password?: string;
     phone?: string;
+    phone_country_code?: string;
+    country?: string;
   }) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
@@ -70,7 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       full_name: string;
       email: string;
       password: string;
+      confirm_password?: string;
       phone?: string;
+      phone_country_code?: string;
+      country?: string;
     }) => {
       const res = await api.register(input);
       setToken(res.token);

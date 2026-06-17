@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity,
-  Coins,
+  Globe2,
   Layers,
   Receipt,
-  Repeat,
   ScrollText,
   ShieldAlert,
   Users,
@@ -23,6 +22,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Stagger } from "@/components/shared/reveal";
 import { useAuth } from "@/context/auth-context";
 import { api } from "@/lib/api";
+import { COUNTRIES } from "@/lib/config/countries";
 import { formatAmount, formatDate, initials } from "@/lib/utils";
 import type { AdminStats, AuditLog, SavingsGroup, User } from "@/lib/types";
 
@@ -80,14 +80,13 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Platform overview
+            International platform overview
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Oversight of users, circles and on-chain activity across Pamodzi.
+            Monitor users by country, savings circles, Stellar success rate, and cross-border activity.
           </p>
         </div>
 
-        {/* Metrics */}
         <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard
             label="Total users"
@@ -96,23 +95,25 @@ export default function AdminPage() {
             series={makeSeries(3, 10, 60, 0.5)}
           />
           <StatCard
-            label="Circles"
-            value={stats?.groups ?? 0}
+            label="Active savings circles"
+            value={stats?.active_savings_circles ?? stats?.active_groups ?? 0}
             icon={Layers}
             color="hsl(var(--chart-2))"
             series={makeSeries(8, 10, 40, 0.5)}
           />
           <StatCard
-            label="Contributions"
-            value={stats?.contributions_paid ?? 0}
-            icon={Coins}
+            label="Stellar success rate"
+            value={stats?.stellar_success_rate ?? 100}
+            decimals={1}
+            suffix="%"
+            icon={Activity}
             color="hsl(var(--chart-3))"
             series={makeSeries(11, 10, 70, 0.6)}
           />
           <StatCard
-            label="Payouts"
-            value={stats?.payouts_completed ?? 0}
-            icon={Repeat}
+            label="Cross-border groups"
+            value={stats?.cross_border_groups ?? 0}
+            icon={Globe2}
             color="hsl(var(--chart-4))"
             series={makeSeries(6, 10, 50, 0.6)}
           />
@@ -135,10 +136,10 @@ export default function AdminPage() {
           <div className="grid gap-4">
             <Card className="p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Activity className="h-4 w-4 text-primary" /> Active circles
+                <ShieldAlert className="h-4 w-4 text-primary" /> Suspicious activity
               </div>
               <p className="tabular mt-2 text-3xl font-bold">
-                <AnimatedNumber value={stats?.active_groups ?? 0} />
+                <AnimatedNumber value={stats?.suspicious_activity ?? 0} />
               </p>
             </Card>
             <Card className="p-5">
@@ -151,6 +152,78 @@ export default function AdminPage() {
             </Card>
           </div>
         </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Users by country</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : (
+                <ul className="space-y-2">
+                  {(stats?.users_by_country ?? []).slice(0, 8).map((row) => {
+                    const c = COUNTRIES.find((x) => x.code === row.country);
+                    return (
+                      <li
+                        key={row.country ?? "unknown"}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span>
+                          {c ? `${c.flag} ${c.name}` : row.country ?? "Unknown"}
+                        </span>
+                        <Badge variant="secondary">{row.count}</Badge>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Volume by currency</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : (
+                <ul className="space-y-2">
+                  {(stats?.volume_by_currency ?? []).slice(0, 8).map((row) => (
+                    <li
+                      key={row.currency}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <Badge variant="chain">{row.currency}</Badge>
+                      <span className="tabular font-medium">{row.volume}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Payment provider usage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (
+              <ul className="flex flex-wrap gap-2">
+                {(stats?.payment_provider_usage ?? []).map((row) => (
+                  <Badge key={row.provider ?? "unknown"} variant="secondary">
+                    {row.provider ?? "unknown"} · {row.count}
+                  </Badge>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Users + Groups */}
         <div className="grid gap-4 lg:grid-cols-2">
@@ -180,6 +253,9 @@ export default function AdminPage() {
                           <p className="text-sm font-medium">{u.full_name}</p>
                           <p className="text-xs text-muted-foreground">
                             {u.email}
+                            {u.country
+                              ? ` · ${COUNTRIES.find((c) => c.code === u.country)?.flag ?? u.country}`
+                              : ""}
                           </p>
                         </div>
                       </div>

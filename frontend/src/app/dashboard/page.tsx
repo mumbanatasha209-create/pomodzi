@@ -28,6 +28,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Stagger, staggerItem } from "@/components/shared/reveal";
 import { useAuth } from "@/context/auth-context";
 import { api } from "@/lib/api";
+import { transactionLabel } from "@/lib/config/transaction-labels";
 import { formatAmount, formatDate } from "@/lib/utils";
 import type { SavingsGroup, Transaction, Wallet } from "@/lib/types";
 
@@ -120,7 +121,7 @@ export default function DashboardPage() {
               <div className="relative flex items-start justify-between">
                 <div>
                   <p className="text-sm text-primary-foreground/80">
-                    Wallet balance
+                    Total Wallet Balance
                   </p>
                   {loading ? (
                     <Skeleton className="mt-2 h-9 w-48 bg-primary-foreground/20" />
@@ -135,6 +136,9 @@ export default function DashboardPage() {
                   Testnet
                 </span>
               </div>
+              <p className="relative mt-2 text-xs text-primary-foreground/70">
+                Stellar Testnet Status · Cross-Border Ready
+              </p>
 
               {wallet?.public_key ? (
                 <button
@@ -187,13 +191,13 @@ export default function DashboardPage() {
         {/* Metric stat cards */}
         <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard
-            label="Active circles"
+            label="Active Savings Circles"
             value={groups.filter((g) => g.status === "active").length}
             icon={Users}
             series={makeSeries(groups.length + 3, 10, 40, 0.5)}
           />
           <StatCard
-            label="Total contributed"
+            label="Contributions This Cycle"
             value={totalContributed}
             decimals={0}
             suffix=" XLM"
@@ -202,7 +206,7 @@ export default function DashboardPage() {
             series={makeSeries(9, 10, 80, 0.6)}
           />
           <StatCard
-            label="Payouts received"
+            label="Next Payout"
             value={totalReceived}
             decimals={0}
             suffix=" XLM"
@@ -211,7 +215,7 @@ export default function DashboardPage() {
             series={makeSeries(13, 10, 60, 0.7)}
           />
           <StatCard
-            label="Transactions"
+            label="Treasury Activity"
             value={txns.length}
             icon={Receipt}
             color="hsl(var(--chart-5))"
@@ -335,8 +339,8 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium capitalize">
-                          {t.tx_type.replace("_", " ")}
+                        <p className="truncate text-sm font-medium">
+                          {transactionLabel(t.tx_type)}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {formatDate(t.created_at)}

@@ -2,10 +2,10 @@ use crate::{
     auth::AuthUser,
     error::{AppError, AppResult},
     handlers::{
-        get_user_signing_secret, group_lock_key, groups::is_active_member,
+        get_user, get_user_signing_secret, group_lock_key, groups::is_active_member,
         notify, payouts, write_audit,
     },
-    models::{Contribution, ContributeRequest, SavingsGroup, parse_money},
+    models::{Contribution, ContributeRequest, SavingsGroup, CONTRIBUTION_COLUMNS, parse_money},
     security::validate_contribution_amount,
     state::AppState,
 };
@@ -18,10 +18,7 @@ use serde_json::{json, Value};
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
-const GROUP_SELECT: &str = r#"SELECT id, name, description, admin_id, contribution_amount, currency,
-       frequency::text AS frequency, current_cycle, status::text AS status,
-       invite_code, treasury_public_key, treasury_secret_key, created_at, updated_at
-       FROM savings_groups WHERE id = $1"#;
+use crate::models::GROUP_SELECT_BY_ID as GROUP_SELECT;
 
 /// POST /api/groups/:id/contribute
 pub async fn contribute(
@@ -90,6 +87,24 @@ pub async fn contribute(
 
     let (_user, member_secret) =
         get_user_signing_secret(&state.db, &state.crypto, auth.user_id).await?;
+    let contributor = get_user(&state.db, auth.user_id).await?;
+
+    let payment_provider = payload
+        .payment_provider
+        .as_deref()
+        .unwrap_or("stellar_wallet");
+    let payment_country = contributor
+        .as_ref()
+        .and_then(|u| u.country.clone())
+        .or_else(|| locked_group.primary_country.clone());
+    let cross_border = contributor
+        .as_ref()
+        .and_then(|u| u.country.as_deref())
+        .zip(locked_group.primary_country.as_deref())
+        .map(|(a, b)| a != b)
+        .unwrap_or(false);
+    let original_currency = locked_group.currency.clone();
+    let settlement_currency = locked_group.settlement_asset.clone();
 
     let payment = state
         .stellar
@@ -110,20 +125,32 @@ pub async fn contribute(
         cycle,
         &amount,
         &payment.hash,
+        &original_currency,
+        &settlement_currency,
+        payment_provider,
+        payment_country.as_deref(),
     )
     .await?;
 
+    let tx_type = if cross_border {
+        "cross_border_contribution"
+    } else {
+        "contribution"
+    };
+
     sqlx::query(
-        r#"INSERT INTO transactions (user_id, group_id, tx_type, amount, status, blockchain_hash,
+        r#"INSERT INTO transactions (user_id, group_id, tx_type, amount, currency, status, blockchain_hash,
            transaction_source, memo)
-           VALUES ($1, $2, 'contribution', $3, 'success', $4, 'stellar_testnet', $5)"#,
+           VALUES ($1, $2, $3::tx_type, $4, $5, 'success', $6, 'stellar_testnet', $7)"#,
     )
     .bind(auth.user_id)
     .bind(group_id)
+    .bind(tx_type)
     .bind(&amount)
+    .bind(&original_currency)
     .bind(&payment.hash)
     .bind(format!(
-        "Contribution to {} (cycle {})",
+        "Group Contribution to {} (cycle {})",
         locked_group.name, cycle
     ))
     .execute(&mut *tx)
@@ -165,9 +192,17 @@ pub async fn contribute(
 
     notify(
         &state.db,
-        locked_group.admin_id,
+        auth.user_id,
         "Contribution received",
-        &format!("{} paid their contribution for cycle {}.", auth.email, cycle),
+        "Your contribution was received.",
+    )
+    .await;
+
+    notify(
+        &state.db,
+        locked_group.admin_id,
+        "Treasury deposit",
+        &format!("Treasury received a contribution for cycle {}.", cycle),
     )
     .await;
 
@@ -185,25 +220,38 @@ async fn insert_confirmed_contribution(
     cycle: i32,
     amount: &Decimal,
     blockchain_hash: &str,
+    original_currency: &str,
+    settlement_currency: &str,
+    payment_provider: &str,
+    payment_country: Option<&str>,
 ) -> AppResult<Contribution> {
-    let contribution = sqlx::query_as::<_, Contribution>(
+    let insert = format!(
         r#"INSERT INTO contributions (group_id, user_id, cycle, amount, status, blockchain_hash,
-           transaction_source, paid_at)
-           VALUES ($1, $2, $3, $4, 'paid', $5, 'stellar_testnet', now())
+           transaction_source, paid_at, original_currency, settlement_currency, payment_provider,
+           payment_country)
+           VALUES ($1, $2, $3, $4, 'paid', $5, 'stellar_testnet', now(), $6, $7, $8, $9)
            ON CONFLICT (group_id, user_id, cycle)
            DO UPDATE SET status = 'paid', amount = EXCLUDED.amount,
                          blockchain_hash = EXCLUDED.blockchain_hash,
                          transaction_source = EXCLUDED.transaction_source,
-                         paid_at = now()
-           RETURNING id, group_id, user_id, cycle, amount, status::text AS status,
-                     blockchain_hash, transaction_source::text AS transaction_source,
-                     paid_at, created_at"#,
-    )
+                         paid_at = now(),
+                         original_currency = EXCLUDED.original_currency,
+                         settlement_currency = EXCLUDED.settlement_currency,
+                         payment_provider = EXCLUDED.payment_provider,
+                         payment_country = EXCLUDED.payment_country
+           RETURNING {CONTRIBUTION_COLUMNS}"#
+    );
+
+    let contribution = sqlx::query_as::<_, Contribution>(&insert)
     .bind(group_id)
     .bind(user_id)
     .bind(cycle)
     .bind(amount)
     .bind(blockchain_hash)
+    .bind(original_currency)
+    .bind(settlement_currency)
+    .bind(payment_provider)
+    .bind(payment_country)
     .fetch_one(&mut **tx)
     .await?;
 
@@ -221,11 +269,7 @@ pub async fn list_contributions(
     }
 
     let rows = sqlx::query_as::<_, Contribution>(
-        r#"SELECT id, group_id, user_id, cycle, amount, status::text AS status,
-                  blockchain_hash, transaction_source::text AS transaction_source,
-                  paid_at, created_at
-           FROM contributions WHERE group_id = $1
-           ORDER BY cycle DESC, created_at DESC"#,
+        &format!("SELECT {CONTRIBUTION_COLUMNS} FROM contributions WHERE group_id = $1 ORDER BY cycle DESC, created_at DESC"),
     )
     .bind(group_id)
     .fetch_all(&state.db)

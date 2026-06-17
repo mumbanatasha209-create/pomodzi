@@ -43,6 +43,7 @@ bcrypt = "0.15"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 rand = "0.8"
 stellar-xdr = { version = "22.1.0", features = ["curr", "std"] }
+stellar-strkey = "0.0.9"
 
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 

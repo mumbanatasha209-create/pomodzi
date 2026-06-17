@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BadgeCheck, Quote, ShieldCheck, TrendingUp } from "lucide-react";
+import { BadgeCheck, Quote, ShieldCheck, TrendingUp, ArrowLeft } from "lucide-react";
 import { Wordmark } from "@/components/shared/logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -36,11 +36,11 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         >
           <Quote className="h-8 w-8 opacity-60" />
           <p className="mt-4 text-2xl font-semibold leading-snug">
-            “Pamodzi turned our monthly chama into something we can finally see
-            and trust — every contribution, every payout, on-chain.”
+            “Pamodzi helps our savings circle track contributions and rotating
+            payouts across borders — every member, every treasury move, on-chain.”
           </p>
           <p className="mt-4 text-sm text-primary-foreground/80">
-            Amara N. — Stokvel organizer, Lusaka
+            Amara N. — Savings circle organizer
           </p>
 
           <div className="mt-10 grid grid-cols-3 gap-4">
@@ -78,6 +78,13 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             transition={{ duration: 0.5 }}
             className="w-full max-w-sm"
           >
+            <Link
+              href="/"
+              className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to home
+            </Link>
             {children}
           </motion.div>
         </div>

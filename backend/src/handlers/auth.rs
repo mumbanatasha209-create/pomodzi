@@ -2,7 +2,11 @@ use crate::{
     auth::{jwt, password, AuthUser},
     error::{AppError, AppResult},
     handlers::{encrypt_secret, get_user, notify, write_audit},
-    models::{AuthResponse, LoginRequest, RegisterRequest, User, UserPublic},
+    international::{
+        default_currency_for_country, default_timezone_for_country, validate_country,
+        validate_email, validate_password, validate_phone,
+    },
+    models::{AuthResponse, LoginRequest, RegisterRequest, User, UserPublic, USER_COLUMNS},
     state::AppState,
     stellar::StellarClient,
 };
@@ -16,14 +20,41 @@ pub async fn register(
     Json(payload): Json<RegisterRequest>,
 ) -> AppResult<Json<AuthResponse>> {
     let email = payload.email.trim().to_lowercase();
-    if payload.full_name.trim().is_empty() || email.is_empty() {
-        return Err(AppError::BadRequest("Name and email are required".into()));
+    if payload.full_name.trim().is_empty() {
+        return Err(AppError::BadRequest("Full name is required".into()));
     }
-    if payload.password.len() < 6 {
-        return Err(AppError::BadRequest(
-            "Password must be at least 6 characters".into(),
-        ));
-    }
+    validate_email(&email)?;
+    validate_password(
+        &payload.password,
+        payload.confirm_password.as_deref(),
+    )?;
+
+    let country = payload
+        .country
+        .as_deref()
+        .map(validate_country)
+        .transpose()?;
+    let phone_country_code = payload
+        .phone_country_code
+        .as_deref()
+        .map(validate_country)
+        .transpose()?;
+    let phone = payload
+        .phone
+        .as_deref()
+        .map(|p| validate_phone(p, phone_country_code.as_deref().or(country.as_deref())))
+        .transpose()?;
+
+    let preferred_currency = country
+        .as_deref()
+        .map(default_currency_for_country)
+        .unwrap_or("XLM")
+        .to_string();
+    let timezone = country
+        .as_deref()
+        .map(default_timezone_for_country)
+        .unwrap_or("UTC")
+        .to_string();
 
     let existing = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE email = $1")
         .bind(&email)
@@ -37,33 +68,39 @@ pub async fn register(
     let keypair = StellarClient::generate_keypair();
     let encrypted_secret = encrypt_secret(&state.crypto, &keypair.secret_key)?;
 
-    let user = sqlx::query_as::<_, User>(
+    let insert = format!(
         r#"INSERT INTO users
-            (full_name, email, phone, password_hash, role, stellar_public_key, stellar_secret_key)
-           VALUES ($1, $2, $3, $4, 'member'::user_role, $5, $6)
-           RETURNING id, full_name, email, phone, password_hash, role::text AS role,
-                     stellar_public_key, stellar_secret_key, created_at, updated_at"#,
-    )
-    .bind(payload.full_name.trim())
-    .bind(&email)
-    .bind(payload.phone.as_deref())
-    .bind(&password_hash)
-    .bind(&keypair.public_key)
-    .bind(&encrypted_secret)
-    .fetch_one(&state.db)
-    .await?;
+            (full_name, email, phone, password_hash, role, stellar_public_key, stellar_secret_key,
+             country, phone_country_code, preferred_currency, timezone)
+           VALUES ($1, $2, $3, $4, 'member'::user_role, $5, $6, $7, $8, $9, $10)
+           RETURNING {USER_COLUMNS}"#
+    );
+
+    let user = sqlx::query_as::<_, User>(&insert)
+        .bind(payload.full_name.trim())
+        .bind(&email)
+        .bind(phone.as_deref())
+        .bind(&password_hash)
+        .bind(&keypair.public_key)
+        .bind(&encrypted_secret)
+        .bind(country.as_deref())
+        .bind(phone_country_code.as_deref())
+        .bind(&preferred_currency)
+        .bind(&timezone)
+        .fetch_one(&state.db)
+        .await?;
 
     match state.stellar.fund_with_friendbot(&keypair.public_key).await {
         Ok(hash) => {
             sqlx::query(
                 r#"INSERT INTO transactions (user_id, tx_type, amount, status, blockchain_hash,
                    transaction_source, memo)
-                   VALUES ($1, 'wallet_funding', $2, 'success', $3, 'stellar_testnet',
-                   'Testnet wallet funded by Friendbot')"#,
+                   VALUES ($1, 'wallet_funding'::tx_type, $2, 'success', $3, 'stellar_testnet',
+                   'Wallet Funding — Stellar testnet demo')"#,
             )
             .bind(user.id)
             .bind(Decimal::from(10000))
-            .bind(hash.as_deref())
+            .bind(&hash)
             .execute(&state.db)
             .await
             .ok();
@@ -71,7 +108,7 @@ pub async fn register(
                 &state.db,
                 user.id,
                 "Wallet ready",
-                "Your Stellar testnet wallet has been created and funded.",
+                "Your wallet is ready.",
             )
             .await;
         }
@@ -84,7 +121,7 @@ pub async fn register(
         "user.register",
         "user",
         Some(user.id.to_string()),
-        json!({ "email": email, "role": "member" }),
+        json!({ "email": email, "role": "member", "country": country }),
     )
     .await;
 
@@ -108,19 +145,17 @@ pub async fn login(
     Json(payload): Json<LoginRequest>,
 ) -> AppResult<Json<AuthResponse>> {
     let email = payload.email.trim().to_lowercase();
+    validate_email(&email)?;
 
-    let user = sqlx::query_as::<_, User>(
-        r#"SELECT id, full_name, email, phone, password_hash, role::text AS role,
-                  stellar_public_key, stellar_secret_key, created_at, updated_at
-           FROM users WHERE email = $1"#,
-    )
-    .bind(&email)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or_else(|| {
-        tracing::warn!("failed login attempt for unknown email: {email}");
-        AppError::Unauthorized
-    })?;
+    let query = format!("SELECT {USER_COLUMNS} FROM users WHERE email = $1");
+    let user = sqlx::query_as::<_, User>(&query)
+        .bind(&email)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| {
+            tracing::warn!("failed login attempt for unknown email: {email}");
+            AppError::Unauthorized
+        })?;
 
     if !password::verify_password(&payload.password, &user.password_hash) {
         write_audit(
