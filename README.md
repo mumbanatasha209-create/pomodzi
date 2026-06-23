@@ -1,6 +1,6 @@
 ﻿# Pamodzi Finance
 
-Community savings groups (chamas / stokvels) and village banking for Africa —
+Community savings groups (chilimba) and village banking for Africa —
 powered by a Rust + Axum API, PostgreSQL, the Stellar testnet, and a mobile-first
 Next.js 15 frontend.
 
